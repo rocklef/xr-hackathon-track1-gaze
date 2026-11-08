@@ -14,7 +14,7 @@ import subprocess
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-STEPS = ["build", "calibrate", "render", "verify", "sheet"]
+STEPS = ["build", "lookdev", "calibrate", "render", "verify", "sheet"]
 
 
 def find_blender():
@@ -50,6 +50,8 @@ def main():
             continue
         if s == "build":   # needs the MPFB extension + MakeHuman CC0 system assets
             run([blender, "-b", "--addons", "bl_ext.user_default.mpfb", "-P", "tools/build_scene.py"])
+        elif s == "lookdev":
+            run([blender, "-b", "--factory-startup", blend, "-P", "tools/lookdev.py"])
         elif s == "calibrate":
             run([blender, "-b", "--factory-startup", blend, "-P", "tools/calibrate_pupil.py"])
         elif s == "render":

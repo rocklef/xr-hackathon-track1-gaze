@@ -23,10 +23,11 @@ def font(sz, bold=False):
     return ImageFont.load_default()
 
 
-BG, FG, MUTED, ACC = (22, 24, 28), (236, 237, 241), (150, 155, 166), (255, 212, 70)
+BG, FG, MUTED, ACC = (16, 18, 22), (236, 237, 241), (150, 155, 166), (255, 196, 84)
 GREEN, RED = (70, 210, 120), (240, 80, 80)
 T = 312                       # tile width
-EH = 92                       # eye close-up height
+CLOSEUPS = os.path.isdir(os.path.join(ROOT, "renders_eyes"))
+EH = 156 if CLOSEUPS else 92  # eye close-up height
 EYE_BOX = (214, 452, 810, 576)  # eye region in the 1024 render (aspect ~ T:EH)
 PAD, COLS = 18, 5
 HEAD = 150
@@ -67,7 +68,16 @@ for r_ in meta:
         px, py = r_[f"pupil_center_2D_{s}"]
         dd.ellipse((px - 6, py - 6, px + 6, py + 6), outline=c, width=2)
     sheet.paste(img.resize((T, T), Image.LANCZOS), (x, y))
-    sheet.paste(eyes_crop(img), (x, y + T))
+    cu = os.path.join(ROOT, "renders_eyes", f"frame_{k:02d}.png")
+    if CLOSEUPS and os.path.exists(cu):
+        eimg = Image.open(cu).convert("RGB")
+        de = ImageDraw.Draw(eimg)
+        for s_, c in (("L", (40, 230, 90)), ("R", (240, 60, 220))):
+            ex, ey = r_["eyes_closeup"][f"pupil_center_2D_{s_}"]
+            de.ellipse((ex - 9, ey - 9, ex + 9, ey + 9), outline=c, width=3)
+        sheet.paste(eimg.resize((T, EH), Image.LANCZOS), (x, y + T))
+    else:
+        sheet.paste(eyes_crop(img), (x, y + T))
     d.rectangle((x - 1, y - 1, x + T, y + T + EH), outline=(70, 74, 86))
     d.text((x + 10, y + 8), f"k={k}  θ={math.degrees(r_['theta']):.0f}°", font=font(20, True), fill=ACC)
     d.text((x + 10, y + 34), f"h={r_['input']['h']:+.3f}  v={r_['input']['v']:+.3f}", font=font(16), fill=FG)
@@ -90,8 +100,12 @@ names = ["center", "left", "right", "up", "down"]
 cw = (W - PAD * (len(names) + 1)) // len(names)
 for i, n in enumerate(names):
     x = PAD + i * (cw + PAD)
-    img = Image.open(os.path.join(ROOT, "checks", f"{n}.png")).convert("RGB")
-    sheet.paste(img.crop(EYE_BOX).resize((cw, int(cw * EH / T)), Image.LANCZOS), (x, y0 + 40))
+    cu = os.path.join(ROOT, "checks", f"eyes_{n}.png")
+    if os.path.exists(cu):
+        sheet.paste(Image.open(cu).convert("RGB").resize((cw, int(cw * EH / T)), Image.LANCZOS), (x, y0 + 40))
+    else:
+        img = Image.open(os.path.join(ROOT, "checks", f"{n}.png")).convert("RGB")
+        sheet.paste(img.crop(EYE_BOX).resize((cw, int(cw * EH / T)), Image.LANCZOS), (x, y0 + 40))
     rr = rows.get(n)
     label = n.upper()
     if rr:

@@ -10,12 +10,13 @@ A textured, rigged human face in Blender whose eyes rotate about their own physi
 team_name.zip
 ├── scene.blend            # textured MakeHuman mesh, eye bones, materials (textures packed)
 ├── wrapper/eyes.py        # eyes.move(h,v) / eyes.reset() / eyes.render()  (+ CLI)
-├── renders/               # 10 clockwise frames frame_00..09.png, θk = 2πk/10
-├── metadata.json          # one record per render
+├── renders/               # 10 clockwise frames frame_00..09.png, θk = 2πk/10 (1024×1024)
+├── renders_eyes/          # bonus: eye close-ups of the same 10 frames (same camera position, 140 mm, 1024×512)
+├── metadata.json          # one record per render (+ eyes_closeup pupil centres)
 ├── README.md
 ├── contact_sheet.png      # demo contact sheet
 ├── checks/                # centre/left/right/up/down/reset renders + verifier report
-└── tools/                 # scene build, pupil calibration, verifier, contact sheet, pipeline
+└── tools/                 # scene build, look-dev, pupil calibration, verifier, contact sheet, pipeline, live demo
 ```
 
 ## Requirements
@@ -72,8 +73,14 @@ eyes.reset()                  # centre fixation
 1. **Face**: generated with MPFB 2 (the MakeHuman add-on for Blender) using MakeHuman CC0 system assets: `young_caucasian_male` skin (Enhanced SSS shader), high-poly eyes with procedural iris material, eyebrows, eyelashes and short hair.
 2. **True eyeball centres**: a least-squares sphere is fitted to the back (sclera) half of each eyeball mesh. Fitted radius is 15.09 mm. Each `eye.L`/`eye.R` bone's head is moved to that centre, and each eyeball gets 100% weight to its own bone. Rotation is therefore a rigid 3D spherical rotation about the physical centre, not 2D pupil sliding.
 3. **Optical axis**: MakeHuman's eye is modelled slightly tilted (≈2.7° outward, 2° down). The axis is measured as the direction from the centre to the cornea bulge, and the bone is aligned to it. A **Damped Track** constraint then turns that axis toward `TGT_Fixation`, so both lines of sight pass exactly through the target and converge naturally. At rest the vergence is ≈9.4°.
-4. **Entrance-pupil calibration** (`tools/calibrate_pupil.py`): the visible pupil is seen through the refracting cornea, so it is not the front-surface point. The script renders 13 catchlight-free gaze poses, detects the pupils from pixels, and fits a 3D pupil offset in the eye's local frame using Gauss–Newton. The result is 12.65 mm from the centre, about 3.7 mm behind the front surface, which is consistent with real eye optics. Reprojection RMS drops from 4.8 px to 2.2 px. The fitted offset is stored in `scene["gaze_cfg"]`.
-5. **Lid–gaze coupling**: the upper and lower eyelid bones are driven by `k·atan(target_z / 0.35)`, with k = 1.0 for the upper lid and 0.5 for the lower lid. The lids follow vertical gaze as real lids do, so looking up does not bury the pupil. Horizontal gaze and convergence never move the lids.
+4. **Entrance-pupil calibration by chroma key** (`tools/calibrate_pupil.py`): the visible pupil is seen through the refracting cornea, so it is not the front-surface point. For calibration only, the pupil is painted pure green. The script renders 13 gaze poses with flat lighting and segments the green pupil exactly (refraction included). It then fits a 3D pupil offset in the eye's local frame using Gauss–Newton. The result is 13.2 mm from the centre, about 3 mm behind the front surface, consistent with real eye optics. **Reprojection RMS is 0.37 px (max 0.6 px)**, down from 3.6 px for the naive surface point. The pupil colour is restored afterwards, and the offset is stored in `scene["gaze_cfg"]`.
+5. **Look development** (`tools/lookdev.py`):
+   * Portrait lighting: a soft key, fill, rim and kicker, all disk area lights, plus a dark gradient backdrop and Blender's bundled studio HDRI for natural eye reflections. AgX grading. Nothing is animated, so the lighting is constant.
+   * Catchlights are deliberately placed on the upper iris, off the pupil, as in professional eye photography.
+   * **Strand hair:** about 420k Cycles hair curves are grown from the skull mesh inside a sculpted male hairline, with a crew-cut length gradient. This replaces MakeHuman's low-res hair card.
+   * Skin: pores enabled, a warm medium-brown tone (multiply tint that keeps texture detail), and tuned subsurface scattering. Hazel iris, off-white sclera.
+6. **Eye close-up camera** `CAM_GazeEyes`: the *same* locked 40 cm position with a 140 mm lens. Each frame also gets a 1024×512 eye render in which the pupil moves about 22 px. Pupil centres for it are stored under `eyes_closeup` in the metadata.
+7. **Lid–gaze coupling**: the upper and lower eyelid bones are driven by `k·atan(target_z / 0.35)`, with k = 1.0 for the upper lid and 0.5 for the lower lid. The lids follow vertical gaze as real lids do, so looking up does not bury the pupil. Horizontal gaze and convergence never move the lids.
 
 ## metadata.json (one record per render)
 
@@ -104,15 +111,17 @@ This is an independent check that does not trust the metadata. Pupils are detect
 Latest run:
 
 ```
-LEFT   PASS   L: dx=-11.61 dy=+0.28   R: dx=-11.77 dy=+0.25
-RIGHT  PASS   L: dx=+12.54 dy=+1.26   R: dx=+12.02 dy=+0.46
-UP     PASS   L: dx=-0.06 dy=-11.30   R: dx=+0.39 dy=-11.79
-DOWN   PASS   L: dx=-0.25 dy=+12.77   R: dx=-0.01 dy=+12.40
-RESET  PASS   L: dx=+0.00 dy=+0.00    R: dx=+0.00 dy=+0.00
+LEFT   PASS   L: dx=-10.53 dy=+1.85   R: dx=-12.12 dy=+0.98
+RIGHT  PASS   L: dx=+13.72 dy=-1.54   R: dx=+14.18 dy=+0.95
+UP     PASS   L: dx=+2.02 dy=-13.88   R: dx=-0.36 dy=-11.68
+DOWN   PASS   L: dx=+0.59 dy=+12.05   R: dx=+1.15 dy=+12.81
+RESET  PASS   L: dx=+0.06 dy=-0.02    R: dx=-0.11 dy=+0.24
 => 5/5 directions + reset pass
-clockwise sequence: every frame's image-space pupil angle is within 6.2° of θk (both eyes)
-metadata vs pixel-detected pupils: <= 2.9 px; camera model reprojection: 0.085 px
+clockwise sequence (eye close-ups, binocular): every frame within 7.7° of θk
+camera model reprojection: 0.086 px
 ```
+
+The detector thresholds the dark pupil adaptively, erodes the mask to cut thin bridges to the eyelashes, picks the most disc-like blob, and fills catchlight holes. The clockwise-angle test runs on the eye close-ups, where the pupils move about 22 px.
 
 Results go to `checks/report.json`.
 

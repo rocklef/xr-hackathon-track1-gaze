@@ -8,17 +8,17 @@
         "eyes": [
           {
             "eye": "L",
-            "dx": -11.61,
-            "dy": 0.28,
+            "dx": -10.53,
+            "dy": 1.85,
             "pass_": true,
-            "meta_err_px": 2.45
+            "meta_err_px": 2.82
           },
           {
             "eye": "R",
-            "dx": -11.77,
-            "dy": 0.25,
+            "dx": -12.12,
+            "dy": 0.98,
             "pass_": true,
-            "meta_err_px": 0.15
+            "meta_err_px": 2.08
           }
         ]
       },
@@ -28,17 +28,17 @@
         "eyes": [
           {
             "eye": "L",
-            "dx": 12.54,
-            "dy": 1.26,
+            "dx": 13.72,
+            "dy": -1.54,
             "pass_": true,
-            "meta_err_px": 0.71
+            "meta_err_px": 4.34
           },
           {
             "eye": "R",
-            "dx": 12.02,
-            "dy": 0.46,
+            "dx": 14.18,
+            "dy": 0.95,
             "pass_": true,
-            "meta_err_px": 1.68
+            "meta_err_px": 2.01
           }
         ]
       },
@@ -48,17 +48,17 @@
         "eyes": [
           {
             "eye": "L",
-            "dx": -0.06,
-            "dy": -11.3,
+            "dx": 2.02,
+            "dy": -13.88,
             "pass_": true,
-            "meta_err_px": 2.07
+            "meta_err_px": 4.95
           },
           {
             "eye": "R",
-            "dx": 0.39,
-            "dy": -11.79,
+            "dx": -0.36,
+            "dy": -11.68,
             "pass_": true,
-            "meta_err_px": 1.31
+            "meta_err_px": 2.82
           }
         ]
       },
@@ -68,17 +68,17 @@
         "eyes": [
           {
             "eye": "L",
-            "dx": -0.25,
-            "dy": 12.77,
+            "dx": 0.59,
+            "dy": 12.05,
             "pass_": true,
-            "meta_err_px": 2.24
+            "meta_err_px": 3.74
           },
           {
             "eye": "R",
-            "dx": -0.01,
-            "dy": 12.4,
+            "dx": 1.15,
+            "dy": 12.81,
             "pass_": true,
-            "meta_err_px": 1.27
+            "meta_err_px": 1.17
           }
         ]
       },
@@ -88,17 +88,17 @@
         "eyes": [
           {
             "eye": "L",
-            "dx": 0.0,
-            "dy": 0.0,
+            "dx": 0.06,
+            "dy": -0.02,
             "pass_": true,
-            "meta_err_px": 1.95
+            "meta_err_px": 4.42
           },
           {
             "eye": "R",
-            "dx": 0.0,
-            "dy": 0.0,
+            "dx": -0.11,
+            "dy": 0.24,
             "pass_": true,
-            "meta_err_px": 0.66
+            "meta_err_px": 2.48
           }
         ]
       }
@@ -111,200 +111,220 @@
       {
         "frame": 0,
         "theta_deg": 0.0,
+        "binocular_angle_deg": 6.1,
+        "binocular_err_deg": 6.1,
         "eyes": [
           {
             "eye": "L",
-            "angle_deg": 359.7,
-            "angle_err_deg": -0.3,
-            "shift_px": 11.31,
-            "meta_err_px": 2.07
+            "angle_deg": 10.6,
+            "angle_err_deg": 10.6,
+            "shift_px": 22.42,
+            "meta_err_px": 6.99
           },
           {
             "eye": "R",
-            "angle_deg": 1.9,
-            "angle_err_deg": 1.9,
-            "shift_px": 11.79,
-            "meta_err_px": 1.31
+            "angle_deg": 1.6,
+            "angle_err_deg": 1.6,
+            "shift_px": 22.33,
+            "meta_err_px": 3.82
           }
         ]
       },
       {
         "frame": 1,
         "theta_deg": 36.0,
+        "binocular_angle_deg": 38.2,
+        "binocular_err_deg": 2.2,
         "eyes": [
           {
             "eye": "L",
-            "angle_deg": 36.8,
-            "angle_err_deg": 0.8,
-            "shift_px": 11.11,
-            "meta_err_px": 1.8
+            "angle_deg": 37.3,
+            "angle_err_deg": 1.3,
+            "shift_px": 24.86,
+            "meta_err_px": 8.35
           },
           {
             "eye": "R",
-            "angle_deg": 37.0,
-            "angle_err_deg": 1.0,
-            "shift_px": 11.47,
-            "meta_err_px": 1.11
+            "angle_deg": 39.3,
+            "angle_err_deg": 3.3,
+            "shift_px": 22.46,
+            "meta_err_px": 2.05
           }
         ]
       },
       {
         "frame": 2,
         "theta_deg": 72.0,
+        "binocular_angle_deg": 75.7,
+        "binocular_err_deg": 3.7,
         "eyes": [
           {
             "eye": "L",
-            "angle_deg": 78.2,
-            "angle_err_deg": 6.2,
-            "shift_px": 12.26,
-            "meta_err_px": 0.52
+            "angle_deg": 79.6,
+            "angle_err_deg": 7.6,
+            "shift_px": 24.49,
+            "meta_err_px": 2.51
           },
           {
             "eye": "R",
-            "angle_deg": 75.7,
-            "angle_err_deg": 3.7,
-            "shift_px": 11.78,
-            "meta_err_px": 1.62
+            "angle_deg": 71.6,
+            "angle_err_deg": -0.4,
+            "shift_px": 23.39,
+            "meta_err_px": 2.15
           }
         ]
       },
       {
         "frame": 3,
         "theta_deg": 108.0,
+        "binocular_angle_deg": 107.0,
+        "binocular_err_deg": -1.0,
         "eyes": [
           {
             "eye": "L",
-            "angle_deg": 112.6,
-            "angle_err_deg": 4.6,
-            "shift_px": 13.03,
-            "meta_err_px": 0.91
+            "angle_deg": 109.7,
+            "angle_err_deg": 1.7,
+            "shift_px": 23.37,
+            "meta_err_px": 2.75
           },
           {
             "eye": "R",
-            "angle_deg": 110.7,
-            "angle_err_deg": 2.7,
-            "shift_px": 12.33,
-            "meta_err_px": 1.87
+            "angle_deg": 104.0,
+            "angle_err_deg": -4.0,
+            "shift_px": 21.27,
+            "meta_err_px": 0.83
           }
         ]
       },
       {
         "frame": 4,
         "theta_deg": 144.0,
+        "binocular_angle_deg": 139.7,
+        "binocular_err_deg": -4.3,
         "eyes": [
           {
             "eye": "L",
-            "angle_deg": 144.4,
-            "angle_err_deg": 0.4,
-            "shift_px": 12.66,
-            "meta_err_px": 1.12
+            "angle_deg": 146.6,
+            "angle_err_deg": 2.6,
+            "shift_px": 21.18,
+            "meta_err_px": 5.3
           },
           {
             "eye": "R",
-            "angle_deg": 144.0,
-            "angle_err_deg": 0.0,
-            "shift_px": 12.66,
-            "meta_err_px": 1.95
+            "angle_deg": 132.6,
+            "angle_err_deg": -11.4,
+            "shift_px": 20.17,
+            "meta_err_px": 2.09
           }
         ]
       },
       {
         "frame": 5,
         "theta_deg": 180.0,
+        "binocular_angle_deg": 172.5,
+        "binocular_err_deg": -7.5,
         "eyes": [
           {
             "eye": "L",
-            "angle_deg": 181.1,
-            "angle_err_deg": 1.1,
-            "shift_px": 12.77,
-            "meta_err_px": 2.24
+            "angle_deg": 174.7,
+            "angle_err_deg": -5.3,
+            "shift_px": 21.01,
+            "meta_err_px": 4.05
           },
           {
             "eye": "R",
-            "angle_deg": 180.0,
-            "angle_err_deg": 0.0,
-            "shift_px": 12.4,
-            "meta_err_px": 1.27
+            "angle_deg": 169.8,
+            "angle_err_deg": -10.2,
+            "shift_px": 17.05,
+            "meta_err_px": 2.49
           }
         ]
       },
       {
         "frame": 6,
         "theta_deg": 216.0,
+        "binocular_angle_deg": 215.8,
+        "binocular_err_deg": -0.2,
         "eyes": [
           {
             "eye": "L",
-            "angle_deg": 215.7,
-            "angle_err_deg": -0.3,
-            "shift_px": 12.85,
-            "meta_err_px": 2.9
+            "angle_deg": 212.2,
+            "angle_err_deg": -3.8,
+            "shift_px": 20.25,
+            "meta_err_px": 5.4
           },
           {
             "eye": "R",
-            "angle_deg": 214.9,
-            "angle_err_deg": -1.1,
-            "shift_px": 12.57,
-            "meta_err_px": 1.08
+            "angle_deg": 220.8,
+            "angle_err_deg": 4.8,
+            "shift_px": 14.96,
+            "meta_err_px": 4.53
           }
         ]
       },
       {
         "frame": 7,
         "theta_deg": 252.0,
+        "binocular_angle_deg": 250.2,
+        "binocular_err_deg": -1.8,
         "eyes": [
           {
             "eye": "L",
-            "angle_deg": 250.6,
-            "angle_err_deg": -1.4,
-            "shift_px": 12.26,
-            "meta_err_px": 2.89
+            "angle_deg": 244.8,
+            "angle_err_deg": -7.2,
+            "shift_px": 19.37,
+            "meta_err_px": 5.04
           },
           {
             "eye": "R",
-            "angle_deg": 249.8,
-            "angle_err_deg": -2.2,
-            "shift_px": 12.09,
-            "meta_err_px": 0.55
+            "angle_deg": 256.0,
+            "angle_err_deg": 4.0,
+            "shift_px": 18.22,
+            "meta_err_px": 2.61
           }
         ]
       },
       {
         "frame": 8,
         "theta_deg": 288.0,
+        "binocular_angle_deg": 284.3,
+        "binocular_err_deg": -3.7,
         "eyes": [
           {
             "eye": "L",
-            "angle_deg": 292.3,
-            "angle_err_deg": 4.3,
-            "shift_px": 11.48,
-            "meta_err_px": 2.59
+            "angle_deg": 275.7,
+            "angle_err_deg": -12.3,
+            "shift_px": 17.51,
+            "meta_err_px": 4.65
           },
           {
             "eye": "R",
-            "angle_deg": 288.7,
-            "angle_err_deg": 0.7,
-            "shift_px": 11.43,
-            "meta_err_px": 0.6
+            "angle_deg": 292.3,
+            "angle_err_deg": 4.3,
+            "shift_px": 18.91,
+            "meta_err_px": 2.19
           }
         ]
       },
       {
         "frame": 9,
         "theta_deg": 324.0,
+        "binocular_angle_deg": 331.7,
+        "binocular_err_deg": 7.7,
         "eyes": [
           {
             "eye": "L",
-            "angle_deg": 322.3,
-            "angle_err_deg": -1.7,
-            "shift_px": 10.49,
-            "meta_err_px": 1.72
+            "angle_deg": 330.4,
+            "angle_err_deg": 6.4,
+            "shift_px": 15.28,
+            "meta_err_px": 2.51
           },
           {
             "eye": "R",
-            "angle_deg": 328.1,
-            "angle_err_deg": 4.1,
-            "shift_px": 11.58,
-            "meta_err_px": 1.42
+            "angle_deg": 332.7,
+            "angle_err_deg": 8.7,
+            "shift_px": 21.79,
+            "meta_err_px": 4.04
           }
         ]
       }

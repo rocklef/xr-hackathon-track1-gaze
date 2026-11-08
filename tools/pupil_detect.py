@@ -45,9 +45,20 @@ def detect(rgb, approx, half=45, min_area=150, flat=False):
     if flat:
         thr = float(np.percentile(lum, 5)) + 15.0
     else:
-        thr = min(80.0, float(np.percentile(lum, 1)) + 18.0)
+        # adaptive split between the darkest pixels (pupil) and the iris/sclera
+        lo, mid = float(np.percentile(lum, 1)), float(np.percentile(lum, 50))
+        thr = min(90.0, lo + 0.28 * (mid - lo))
     dark = lum < thr
     mask = dark & (sat < 30)
+    # morphological erosion cuts the thin dark bridges to eyelashes / lid line
+    er = max(1, int(round(half / 22)))
+    for _ in range(er):
+        m2 = mask.copy()
+        m2[1:-1, 1:-1] = (mask[1:-1, 1:-1] & mask[:-2, 1:-1] & mask[2:, 1:-1]
+                          & mask[1:-1, :-2] & mask[1:-1, 2:])
+        m2[0, :] = m2[-1, :] = m2[:, 0] = m2[:, -1] = False
+        mask = m2
+    min_area = max(20, int(min_area * 0.5))
     comps = [c for c in _components(mask) if c[0] >= min_area]
     if not comps:
         return None
@@ -57,7 +68,11 @@ def detect(rgb, approx, half=45, min_area=150, flat=False):
         r = np.hypot(p[:, 1] - cx, p[:, 0] - cy).max() + 1
         return area / (math.pi * r * r)
 
-    best = max(comps, key=lambda c: disc_score(c) * min(c[0], 600))
+    def score(c):  # disc-like, sizeable, and near the expected position
+        d = math.hypot(c[1] - half, c[2] - half) / half
+        return disc_score(c) * min(c[0], 600) * (1.0 - 0.6 * min(d, 1.0))
+
+    best = max(comps, key=score)
     # fill catchlight holes / notches: row-span AND column-span fill of the blob
     p = best[3]
     blob = np.zeros_like(mask)
@@ -72,4 +87,20 @@ def detect(rgb, approx, half=45, min_area=150, flat=False):
         cols[ys.min():ys.max() + 1, x] = True
     filled = blob | (rows & cols)
     ys, xs = np.nonzero(filled)
-    return (x0 + float(xs.mean()), y0 + float(ys.mean()))
+    cx, cy = float(xs.mean()), float(ys.mean())
+    return (x0 + cx, y0 + cy)
+
+
+def detect_green(rgb, approx, half=45, min_area=40):
+    """Chroma-key pupil (calibration renders use a pure-green pupil)."""
+    x0, y0 = int(approx[0]) - half, int(approx[1]) - half
+    roi = rgb[y0:y0 + 2 * half, x0:x0 + 2 * half, :3].astype(np.float32)
+    g = roi[:, :, 1] - np.maximum(roi[:, :, 0], roi[:, :, 2])
+    mask = g > 25
+    comps = [c for c in _components(mask) if c[0] >= min_area]
+    if not comps:
+        return None
+    best = max(comps, key=lambda c: c[0])
+    p = best[3]
+    w = g[p[:, 0], p[:, 1]]
+    return (x0 + float((p[:, 1] * w).sum() / w.sum()), y0 + float((p[:, 0] * w).sum() / w.sum()))

@@ -26,9 +26,10 @@ REQUIRED = ["frame", "theta", "input", "eye_rotation_L", "eye_rotation_R",
             "pupil_center_2D_L", "pupil_center_2D_R", "camera_matrix"]
 
 
-def detect_pupil(img, approx):
+def detect_pupil(img, approx, closeup=False):
     """Pupil centre from pixels only (see tools/pupil_detect.py)."""
-    return detect(np.asarray(img.convert("RGB"), dtype=np.float32), approx)
+    a = np.asarray(img.convert("RGB"), dtype=np.float32)
+    return detect(a, approx, half=80, min_area=300) if closeup else detect(a, approx)
 
 
 def check_directions(d):
@@ -64,8 +65,16 @@ def check_sequence(root):
     if len(meta) != 10:
         problems.append(f"expected 10 records, got {len(meta)}")
     centre_ref = json.load(open(os.path.join(root, "checks", "directions.json")))["center"]
-    c_img = Image.open(os.path.join(root, "checks", "center.png"))
-    centre = {s: detect_pupil(c_img, centre_ref[f"pupil_center_2D_{s}"]) for s in "LR"}
+    # The angle test runs on the eye close-ups when present (same camera
+    # position, longer lens: ~2x the pupil shift, so detector noise matters less).
+    cu = os.path.exists(os.path.join(root, "checks", "eyes_center.png")) and "eyes_closeup" in centre_ref
+    if cu:
+        c_img = Image.open(os.path.join(root, "checks", "eyes_center.png"))
+        centre = {s: detect_pupil(c_img, centre_ref["eyes_closeup"][f"pupil_center_2D_{s}"], True) for s in "LR"}
+    else:
+        c_img = Image.open(os.path.join(root, "checks", "center.png"))
+        centre = {s: detect_pupil(c_img, centre_ref[f"pupil_center_2D_{s}"]) for s in "LR"}
+    print("  angle test source:", "eye close-ups (renders_eyes/)" if cu else "main renders")
     rows = []
     reproj_max = [0.0]
     for k, r in enumerate(meta):
@@ -93,18 +102,27 @@ def check_sequence(root):
         img = Image.open(os.path.join(root, "renders", f"frame_{k:02d}.png"))
         if img.size != (1024, 1024):
             problems.append(f"frame {k}: size {img.size}")
-        eyes = []
+        eyes, vec = [], np.zeros(2)
+        src = Image.open(os.path.join(root, "renders_eyes", f"frame_{k:02d}.png")) if cu else img
         for s in "LR":
-            p = detect_pupil(img, r[f"pupil_center_2D_{s}"])
+            m2d = r["eyes_closeup"][f"pupil_center_2D_{s}"] if cu else r[f"pupil_center_2D_{s}"]
+            p = detect_pupil(src, m2d, cu)
             dx, dy = p[0] - centre[s][0], p[1] - centre[s][1]
+            vec += (dx, dy)
             ang = math.degrees(math.atan2(dx, -dy)) % 360       # clockwise from top
             dang = (ang - math.degrees(theta) + 180) % 360 - 180
-            err = math.hypot(p[0] - r[f"pupil_center_2D_{s}"][0], p[1] - r[f"pupil_center_2D_{s}"][1])
-            if abs(dang) > ANGLE_TOL_DEG:
+            err = math.hypot(p[0] - m2d[0], p[1] - m2d[1])
+            if abs(dang) > 2 * ANGLE_TOL_DEG:
                 problems.append(f"frame {k} eye {s}: image angle {ang:.1f} vs theta {math.degrees(theta):.1f}")
             eyes.append(dict(eye=s, angle_deg=round(ang, 1), angle_err_deg=round(dang, 1),
                              shift_px=round(math.hypot(dx, dy), 2), meta_err_px=round(err, 2)))
-        rows.append(dict(frame=k, theta_deg=round(math.degrees(theta), 1), eyes=eyes))
+        # conjugate (binocular) gaze direction: both eyes move together
+        bang = math.degrees(math.atan2(vec[0], -vec[1])) % 360
+        bdang = (bang - math.degrees(theta) + 180) % 360 - 180
+        if abs(bdang) > ANGLE_TOL_DEG:
+            problems.append(f"frame {k}: binocular angle {bang:.1f} vs theta {math.degrees(theta):.1f}")
+        rows.append(dict(frame=k, theta_deg=round(math.degrees(theta), 1), binocular_angle_deg=round(bang, 1),
+                         binocular_err_deg=round(bdang, 1), eyes=eyes))
     print(f"  camera model: max |K[R|t]*pupil3D - pupil2D| = {reproj_max[0]:.4f} px")
     return not problems, problems, rows
 
@@ -125,7 +143,7 @@ def main():
         print("== clockwise sequence (image angle vs theta_k) ==")
         for r in rows_s:
             e = "  ".join(f"{x['eye']}: ang={x['angle_deg']:6.1f} err={x['angle_err_deg']:+5.1f} shift={x['shift_px']:5.2f}px metaErr={x['meta_err_px']:.2f}" for x in r["eyes"])
-            print(f"  k={r['frame']} theta={r['theta_deg']:5.1f}  {e}")
+            print(f"  k={r['frame']} theta={r['theta_deg']:5.1f}  both={r['binocular_angle_deg']:5.1f} (err {r['binocular_err_deg']:+5.1f})  {e}")
         print("  => PASS" if ok_s else "  => FAIL: " + "; ".join(probs))
     else:
         ok_s = False

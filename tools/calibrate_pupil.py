@@ -24,7 +24,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(ROOT, "wrapper"))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import eyes  # noqa: E402
-from pupil_detect import detect  # noqa: E402
+from pupil_detect import detect_green  # noqa: E402
 
 TMP = os.path.join(ROOT, "_calib")
 POSES = [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1), (-0.7, -0.7), (0.7, -0.7),
@@ -56,9 +56,21 @@ def main():
     saved = {o.name: o.hide_render for o in lights}
     for o in lights:
         o.hide_render = True
-    bg = scene.world.node_tree.nodes["Background"].inputs[1]
-    bg_old, samples_old = bg.default_value, scene.cycles.samples
-    bg.default_value, scene.cycles.samples = 2.0, 48
+    # catchlight-free: uniform grey world, lights off
+    world_old, samples_old = scene.world, scene.cycles.samples
+    flat = bpy.data.worlds.new("WLD_CalibFlat")
+    flat.use_nodes = True
+    flat.node_tree.nodes["Background"].inputs[0].default_value = (0.5, 0.5, 0.5, 1)
+    flat.node_tree.nodes["Background"].inputs[1].default_value = 1.2
+    scene.world, scene.cycles.samples = flat, 48
+    # chroma-key: paint the pupil pure green for calibration only
+    eye_grp = next(n for n in bpy.data.objects[eyes.EYES].material_slots[0].material.node_tree.nodes
+                   if n.type == "GROUP")
+    pupil_old = tuple(eye_grp.inputs["PupilColor"].default_value)
+    eye_grp.inputs["PupilColor"].default_value = (0.0, 1.0, 0.0, 1.0)
+    hidden = [o for o in bpy.data.objects if o.name.startswith("SM_Backdrop") and not o.hide_render]
+    for ob in hidden:
+        ob.hide_render = True
 
     obs = []  # (side, centre, R, detected_px)
     os.makedirs(TMP, exist_ok=True)
@@ -71,7 +83,7 @@ def main():
             c, R = eye_frame(side)
             d0 = float(cfg[f"pupil_depth_{side}"])
             guess = eyes._pixel(scene.camera, scene, c + R @ Vector((0, d0, 0)))
-            det = detect(rgb, guess, flat=True)
+            det = detect_green(rgb, guess)
             if det is None:
                 print(f"[calib] pose {i} eye {side}: no pupil found")
                 continue
@@ -109,7 +121,11 @@ def main():
 
     for l in lights:
         l.hide_render = saved[l.name]
-    bg.default_value, scene.cycles.samples = bg_old, samples_old
+    scene.world, scene.cycles.samples = world_old, samples_old
+    eye_grp.inputs["PupilColor"].default_value = pupil_old
+    bpy.data.worlds.remove(flat)
+    for ob in hidden:
+        ob.hide_render = False
     cfg["pupil_offset_local_L"] = [float(x) for x in o]
     cfg["pupil_offset_local_R"] = [float(x) for x in o * MIRROR]
     cfg["pupil_calibration"] = {"rms_px": rms, "max_px": float(per_obs.max()),

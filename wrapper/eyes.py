@@ -182,28 +182,70 @@ def setup_device():
     return "CPU"
 
 
-def render(path=None, frame=None, theta=None):
-    """Render the locked camera view to PNG and return its metadata record."""
+class _UsingCamera:
+    """Temporarily render through another locked camera / resolution."""
+
+    def __init__(self, name, res):
+        self.name, self.res = name, res
+
+    def __enter__(self):
+        sc = bpy.context.scene
+        self.old = (sc.camera, sc.render.resolution_x, sc.render.resolution_y)
+        sc.camera = bpy.data.objects[self.name]
+        sc.render.resolution_x, sc.render.resolution_y = self.res
+        return sc.camera
+
+    def __exit__(self, *exc):
+        sc = bpy.context.scene
+        sc.camera, sc.render.resolution_x, sc.render.resolution_y = self.old
+
+
+def _has_eyes_camera():
+    ec = _cfg().get("eyes_camera")
+    return bool(ec) and ec["name"] in bpy.data.objects
+
+
+def _write(path):
+    scene = bpy.context.scene
+    path = os.path.abspath(bpy.path.abspath(path))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    scene.render.filepath = path
+    bpy.ops.render.render(write_still=True)
+    return path
+
+
+def render(path=None, frame=None, theta=None, eyes_path=None):
+    """Render the locked 40 cm camera to PNG and return its metadata record.
+    If eyes_path is given, also render the eye close-up camera (same position,
+    long lens) and add its pupil centres under rec["eyes_closeup"]."""
     scene = bpy.context.scene
     rec = metadata(frame, theta)
     if path:
-        path = os.path.abspath(bpy.path.abspath(path))
-        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-        scene.render.filepath = path
-        bpy.ops.render.render(write_still=True)
-        rec["image"] = os.path.basename(path)
+        rec["image"] = os.path.basename(_write(path))
+    if eyes_path and _has_eyes_camera():
+        ec = _cfg()["eyes_camera"]
+        with _UsingCamera(ec["name"], tuple(ec["res"])) as cam:
+            K, RT = camera_matrices(scene, cam)
+            sub = {"image": os.path.basename(eyes_path), "resolution": list(ec["res"])}
+            for s_ in "LR":
+                sub[f"pupil_center_2D_{s_}"] = _pixel(cam, scene, Vector(rec[f"pupil_center_3D_{s_}"]))
+            sub["camera_matrix"] = [[round(x, 4) for x in row] for row in K]
+            sub["camera_extrinsics_RT"] = [[round(x, 6) for x in row] for row in RT]
+            _write(eyes_path)
+        rec["eyes_closeup"] = sub
     return rec
 
 
 # --------------------------------------------------------------------------
-def run_sequence(out_root, n=10):
+def run_sequence(out_root, n=10, eyes=True):
     """10 clockwise renders, theta_k = 2*pi*k/n, h = sin, v = cos (k=0 is top)."""
     rdir = os.path.join(out_root, "renders")
     records = []
     for k in range(n):
         theta = 2 * math.pi * k / n
         move(math.sin(theta), math.cos(theta))
-        rec = render(os.path.join(rdir, f"frame_{k:02d}.png"), frame=k, theta=theta)
+        rec = render(os.path.join(rdir, f"frame_{k:02d}.png"), frame=k, theta=theta,
+                     eyes_path=os.path.join(out_root, "renders_eyes", f"frame_{k:02d}.png") if eyes else None)
         records.append(rec)
         print(f"[eyes] frame {k} theta={theta:.4f} h={rec['input']['h']} v={rec['input']['v']} "
               f"pL={rec['pupil_center_2D_L']} pR={rec['pupil_center_2D_R']}", flush=True)
@@ -213,16 +255,18 @@ def run_sequence(out_root, n=10):
     return records
 
 
-def run_directions(out_root):
+def run_directions(out_root, eyes=True):
     """Centre/Left/Right/Up/Down renders for the 5-direction pass/fail check."""
     ddir = os.path.join(out_root, "checks")
     cases = [("center", 0, 0), ("left", -1, 0), ("right", 1, 0), ("up", 0, 1), ("down", 0, -1)]
     recs = {}
     for name, h, v in cases:
         move(h, v)
-        recs[name] = render(os.path.join(ddir, f"{name}.png"))
+        recs[name] = render(os.path.join(ddir, f"{name}.png"),
+                            eyes_path=os.path.join(ddir, f"eyes_{name}.png") if eyes else None)
     reset()
-    recs["reset"] = render(os.path.join(ddir, "reset.png"))
+    recs["reset"] = render(os.path.join(ddir, "reset.png"),
+                           eyes_path=os.path.join(ddir, "eyes_reset.png") if eyes else None)
     with open(os.path.join(ddir, "directions.json"), "w") as f:
         json.dump(recs, f, indent=2)
     return recs
@@ -236,15 +280,16 @@ def _main(argv):
     ap.add_argument("--out", default=None, help="PNG path for a single --move render")
     ap.add_argument("--root", default=None, help="output root (default: folder of scene.blend)")
     ap.add_argument("--samples", type=int, default=None)
+    ap.add_argument("--no-eyes", action="store_true", help="skip the eye close-up renders")
     a = ap.parse_args(argv)
     root = a.root or os.path.dirname(bpy.data.filepath) or os.getcwd()
     if a.samples:
         bpy.context.scene.cycles.samples = a.samples
     print("[eyes] device:", setup_device(), flush=True)
     if a.sequence:
-        run_sequence(root)
+        run_sequence(root, eyes=not a.no_eyes)
     if a.directions:
-        run_directions(root)
+        run_directions(root, eyes=not a.no_eyes)
     if a.move:
         move(*a.move)
         rec = render(a.out)
