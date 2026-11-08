@@ -437,8 +437,7 @@ def seg_accuracy(t, d):
     paste(img, cal, (60, 110), fade_in(t, min(0.4, t_green - 0.6)))
     text(img, (60, 365), "Calibration pass: pupil painted green → exact segmentation", F(26, "s"), FG, fade_in(t, t_green))
     text(img, (60, 402), "through the refracting cornea, then a 3D entrance-pupil fit", F(26, "l"), MUTED, fade_in(t, t_green + 0.2))
-    t_num = wt("accuracy", "accurate", 0, 3.0)
-    cards = [(counter(t, t_num - 0.6, CAL.get("rms", 0.37), "%.2f px"), "pupil-label error (RMS)", "chroma-key calibration, 13 gaze poses"),
+    cards = [(counter(t, 0.8, CAL.get("rms", 0.37), "%.2f px"), "pupil-label error (RMS)", "chroma-key calibration, 13 gaze poses"),
              ("15.09 mm", "eyeball radius, sphere-fit", "rotation about the true 3D centre"),
              (counter(t, 1.2, 9.4, "%.1f°"), "natural vergence at 35 cm", "Damped Track on the optical axis"),
              ("0.09 px", "camera-model reprojection", "K [R|t] · pupil3D = pupil2D")]
