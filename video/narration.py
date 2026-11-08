@@ -16,23 +16,37 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 OUT = os.path.join(ROOT, "video", "build", "voice")
 
 SCRIPT = {
-    "title": "Hi, we're Team Rocklef. This is our Track One project: synthetic eye movement and virtual camera rendering.",
-    "problem": "Eye trackers in X R headsets learn from thousands of labelled eye images. But capturing real eyes at "
-               "extreme angles is slow, expensive, and restricted by privacy rules. So we built a calibrated synthetic "
-               "eye rig in Blender, where every image comes with perfect labels.",
-    "setup": "Here's the setup. A fixation target sits thirty-five centimetres in front of the eyes, and can move up to "
-             "five centimetres in any direction. The render camera is locked forty centimetres ahead. Each eyeball "
-             "rotates about its own true centre, so both lines of sight meet exactly on the target.",
-    "gaze": "Our Python wrapper drives everything. Calling eyes dot move, with h and v, turns both eyes together: left, "
-            "right, up and down. And eyes dot reset brings them back to centre. Notice how the eyelids follow the "
-            "gaze, just like real eyes.",
-    "wrapper": "A single command renders the ten clockwise frames, starting from the top. For every frame, it also "
-               "writes the metadata: the inputs, both eye rotations, the two D pupil centres, and the full camera matrix.",
-    "proof": "We don't just trust our own numbers. An independent checker finds the pupils directly in the rendered "
-             "pixels. All five directions pass, and all ten frames follow the clockwise order.",
-    "accuracy": "To make the labels precise, we paint the pupil green during calibration, and fit its true position "
-                "behind the cornea. Our pupil labels are accurate to under half a pixel.",
-    "outro": "Everything is reproducible from a single script. Thank you, from Team Rocklef.",
+    "title": "Hi, we're Team Rocklef, and this is our Track One project.",
+    "background": "Imagine a headset that sharpens only what you look at, a car that notices a driver's drifting eyes, "
+                  "or a screen you control with just your eyes. Each one needs to know exactly where you're looking.",
+    "problem": "But these systems learn from examples, and gathering real ones is slow, costly and private, and never "
+               "perfectly labelled. So they fail where they've seen the least.",
+    "literature": "Researchers have tried two routes: recording thousands of real volunteers, and drawing eyes with "
+                  "computer graphics. Both work, but each trades off label accuracy, realism, or control.",
+    "solution": "The gap: no open tool where both eyes truly fixate a 3D point, through a fixed headset-style camera, "
+                "with labels you can verify. So we built one.",
+    "architecture": "We build a textured face, find each eyeball's true centre and axis, and rig both eyes onto a moving "
+                    "target, with eyelids that follow. A locked camera renders each frame with full ground truth, "
+                    "and a verifier checks it.",
+    "setup": "The fixation target sits thirty-five centimetres ahead and moves up to five centimetres either way. The "
+             "camera is locked forty centimetres ahead, and both lines of sight meet on the target.",
+    "gaze": "In Python, eyes dot move, with h and v, turns both eyes together, and eyes dot reset re-centres them. "
+            "Notice the eyelids following the gaze.",
+    "wrapper": "One command renders the ten clockwise frames from the top, with metadata for each: the inputs, eye "
+               "rotations, two D pupil centres and the full camera matrix.",
+    "proof": "An independent checker then finds the pupils in the pixels themselves. All five directions pass, and all "
+             "ten frames follow the clockwise order.",
+    "accuracy": "During calibration, we paint the pupil green and fit its true position behind the cornea, so our labels "
+                "are accurate to under half a pixel.",
+    "compare": "Against the state of the art: real datasets are costly, private and approximate. Graphics renderers are "
+               "fast, but mostly model one eye. Ours is free, private, binocular, and proves every label from the pixels.",
+    "novelty": "What's new: pupils calibrated through the cornea, true binocular vergence, gaze-linked eyelids, and a "
+               "self-checking pipeline. And it reaches far beyond headsets: driver monitoring, eye-controlled "
+               "accessibility, medical eye screening, and digital humans.",
+    "future": "Next: infrared headset cameras, more faces, skin tones and glasses, natural blinks, and testing how well "
+              "models trained on our images work on real eyes.",
+    "outro": "Calibrated, verifiable eye data from one script. For the code or further development, email us at the "
+             "addresses on screen. Thank you, from Team Rocklef.",
 }
 
 
@@ -54,11 +68,19 @@ async def synth(key, text, voice, rate):
 async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--voice", default="en-US-AndrewNeural")
-    ap.add_argument("--rate", default="+0%")
+    ap.add_argument("--rate", default="+6%")
     a = ap.parse_args()
     os.makedirs(OUT, exist_ok=True)
     for k, t in SCRIPT.items():
-        await synth(k, t, a.voice, a.rate)
+        for attempt in range(5):
+            try:
+                await synth(k, t, a.voice, a.rate)
+                break
+            except edge_tts.exceptions.NoAudioReceived:
+                print(f"  {k}: no audio, retry {attempt + 1}")
+                await asyncio.sleep(2 + 2 * attempt)
+        else:
+            raise SystemExit(f"edge-tts failed for {k}")
     with open(os.path.join(OUT, "voice.txt"), "w") as f:
         f.write(a.voice)
 
