@@ -297,12 +297,18 @@ def render_frames(path, frames):
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
-    ap.add_argument("--shot", choices=["setup", "gaze"], required=True)
+    ap.add_argument("--shot", choices=["setup", "gaze", "hero", "xray"], required=True)
     ap.add_argument("--samples", type=int, default=24)
     ap.add_argument("--frames", default=None, help="e.g. 1-10")
     a = ap.parse_args(argv)
     frames = tuple(int(x) for x in a.frames.split("-")) if a.frames else None
-    if a.shot == "setup":
+    if a.shot in ("hero", "xray"):
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import shots_explainer as sx
+        ctx = dict(sc=sc, MID=MID, RIG=RIG, cfg=cfg, BUILD=BUILD, ease=ease, link=link, emissive=emissive,
+                   common_render=common_render, tshirt=tshirt, key_target=key_target, render_frames=render_frames)
+        (sx.shot_hero if a.shot == "hero" else sx.shot_xray)(ctx, a.samples, frames)
+    elif a.shot == "setup":
         shot_setup(a.samples, frames)
     else:
         shot_gaze(a.samples, frames)

@@ -1,0 +1,2 @@
+{ "name": "rocklef-cartoon", "private": true, "type": "module",
+  "dependencies": { "@fontsource/montserrat": "5.1.0", "playwright": "1.49.1", "three": "0.169.0" } }

@@ -14,6 +14,7 @@ import json
 import math
 import os
 import subprocess
+import sys
 import wave
 
 import numpy as np
@@ -111,8 +112,8 @@ except OSError:
     CAL = {"rms": 0.37}
 TRACK = json.load(open(os.path.join(BUILD, "gaze_track.json")))
 SEQ_ERR = max(abs(r["binocular_err_deg"]) for r in REPORT["sequence"]["rows"])
-SCENES = ("title", "background", "problem", "literature", "solution", "architecture", "setup", "gaze", "wrapper",
-          "proof", "accuracy", "compare", "novelty", "future", "outro")
+SCENES = ("open", "vr", "car", "access", "medical", "title", "problem", "literature", "solution", "eyeball",
+          "setup", "gaze", "architecture", "proof", "compare", "future", "outro")
 VOICE_DIR = os.path.join(BUILD, "voice")
 VOICE = {k: json.load(open(os.path.join(VOICE_DIR, f"{k}.json")))
          for k in SCENES if os.path.exists(os.path.join(VOICE_DIR, f"{k}.json"))}
@@ -354,30 +355,6 @@ def blurred_bg(t, d, path, blur=8):
     return kenburns(bg, t / d, 1.05, 1.15).resize((W, H), Image.LANCZOS).filter(ImageFilter.GaussianBlur(blur))
 
 
-def seg_background(t, d):
-    img = canvas()
-    paste(img, blurred_bg(t, d, os.path.join(ROOT, "renders_eyes", "frame_00.png")), (0, 0), 0.22)
-    tag(img, t, "WHY IT MATTERS", 0.1)
-    text(img, (80, 110), "Devices are learning to follow your eyes", F(60, "b"), FG, fade_in(t, 0.2))
-    cards = [("headset", "XR headsets", "Render sharp detail only where you look (foveated rendering)",
-              wt("background", "headset", 0, 1.0)),
-             ("car", "Cars", "Notice when a driver's eyes drift away from the road", wt("background", "car", 0, 3.0)),
-             ("screen", "Accessibility", "Click, type and talk using only the eyes", wt("background", "screen", 0, 5.0))]
-    for k, (ic, ttl, sub, st) in enumerate(cards):
-        x, y, cw, ch = 80 + k * 600, 250, 560, 400
-        a = fade_in(t, st - 0.2)
-        dy = int((1 - a) * 20)
-        panel(img, (x, y + dy, x + cw, y + ch + dy), a)
-        icon(img, ic, x + cw // 2, y + 120 + dy, 70, ACC, a, 5)
-        text(img, (x + cw // 2, y + 225), ttl, F(42, "b"), FG, a, anchor="ma")
-        for j, ln in enumerate(wrap(sub, F(28, "l"), cw - 80)):
-            text(img, (x + cw // 2, y + 290 + j * 38), ln, F(28, "l"), MUTED, a, anchor="ma")
-    t_q = wt("background", "each", 0, d - 3)
-    text(img, (W // 2, 720), "All of them need one answer:", F(34, "l"), MUTED, fade_in(t, t_q), anchor="ma")
-    text(img, (W // 2, 775), "where exactly is this person looking?", F(58, "b"), ACC, fade_in(t, t_q + 0.5), anchor="ma")
-    return img
-
-
 def chip(img, x, y, s, a, col=BAD, size=36):
     f = F(size, "s")
     w = int(ImageDraw.Draw(img).textlength(s, font=f)) + 56
@@ -393,114 +370,26 @@ def chip(img, x, y, s, a, col=BAD, size=36):
     return w
 
 
-def seg_problem(t, d):
-    img = canvas()
-    paste(img, blurred_bg(t, d, os.path.join(ROOT, "renders_eyes", "frame_02.png")), (0, 0), 0.25)
-    tag(img, t, "THE PROBLEM · IN PLAIN WORDS", 0.1)
-    text(img, (140, 200), "Smart devices learn by example.", F(70, "b"), FG,
-         fade_in(t, wt("problem", "learn", 0, 0.8) - 0.3))
-    text(img, (140, 320), "But collecting real examples is…", F(40, "l"), MUTED,
-         fade_in(t, wt("problem", "gathering", 0, 2.0)))
-    x = 140
-    for word, lab in (("slow", "Slow"), ("costly", "Costly"), ("private", "Private"),
-                      ("never", "Never perfectly labelled")):
-        x += chip(img, x, 400, lab, fade_in(t, wt("problem", word, 0, 3.0) - 0.1, 0.35)) + 28
-    t_f = wt("problem", "fail", 0, d - 3)
-    text(img, (140, 580), "So they fail exactly where they've seen the least:", F(46, "s"), FG, fade_in(t, t_f - 0.4))
-    text(img, (140, 650), "extreme angles · unusual faces · new headsets", F(46, "b"), ACC, fade_in(t, t_f + 0.4))
-    return img
-
-
-PAPERS_REAL = [("Zhang, Sugano, Fritz & Bulling", "Appearance-Based Gaze Estimation in the Wild (MPIIGaze)", "CVPR 2015"),
-               ("Krafka, Khosla, Kellnhofer et al.", "Eye Tracking for Everyone (GazeCapture)", "CVPR 2016"),
-               ("Zhang, Park, Beeler et al.",
-                "ETH-XGaze: A Large Scale Dataset for Gaze Estimation under Extreme Head Pose and Gaze Variation",
-                "ECCV 2020")]
-PAPERS_SYN = [("Wood, Baltrušaitis, Zhang et al.",
-               "Rendering of Eyes for Eye-Shape Registration and Gaze Estimation (SynthesEyes)", "ICCV 2015"),
-              ("Wood, Baltrušaitis, Morency et al.",
-               "Learning an Appearance-Based Gaze Estimator from One Million Synthesised Images (UnityEyes)", "ETRA 2016"),
-              ("Shrivastava, Pfister, Tuzel et al.",
-               "Learning from Simulated and Unsupervised Images through Adversarial Training", "CVPR 2017"),
-              ("Kim, Stengel, Majercik et al.",
-               "NVGaze: An Anatomically-Informed Dataset for Low-Latency, Near-Eye Gaze Estimation", "CHI 2019")]
-
-
-def seg_literature(t, d):
-    img = canvas()
-    tag(img, t, "EXISTING RESEARCH", 0.1)
-    cols = [(60, "people", "Route 1 · Record real people", PAPERS_REAL, wt("literature", "recording", 0, 1.5),
-             ("Real appearance", "Slow, private, labels ≈ where people were asked to look")),
-            (990, "cube", "Route 2 · Render with graphics", PAPERS_SYN, wt("literature", "drawing", 0, 4.0),
-             ("Fast, exact geometry", "Mostly one eye region at a time"))]
-    t_tr = wt("literature", "trades", 0, d - 3)
-    for x, ic, head, papers, st, (pro, con) in cols:
-        a = fade_in(t, st - 0.3)
-        icon(img, ic, x + 40, 128, 34, ACC, a, 4)
-        text(img, (x + 100, 100), head, F(40, "b"), FG, a)
-        y = 190
-        for k, (au, ti, venue) in enumerate(papers):
-            ak = fade_in(t, st + 0.25 * k)
-            lines = wrap(ti, F(24, "l"), 820)[:2]
-            hgt = 58 + 32 * len(lines)
-            panel(img, (x, y, x + 870, y + hgt), ak, r=10)
-            text(img, (x + 22, y + 10), au, F(26, "s"), FG, ak)
-            text(img, (x + 848, y + 10), venue, F(26, "b"), ACC, ak, anchor="ra")
-            for j, ln in enumerate(lines):
-                text(img, (x + 22, y + 50 + j * 32), ln, F(24, "l"), MUTED, ak)
-            y += hgt + 14
-        text(img, (x, 775), "+  " + pro, F(30, "s"), GREEN, fade_in(t, t_tr - 0.2))
-        text(img, (x, 822), "–  " + con, F(30, "s"), BAD, fade_in(t, t_tr + 0.3))
-    return img
-
-
-def seg_solution(t, d):
-    img = canvas()
-    tag(img, t, "THE GAP  →  OUR SOLUTION", 0.1)
-    text(img, (80, 100), "In plain words, nobody offered…", F(30, "s"), ACC, fade_in(t, 0.2))
-    text(img, (1010, 100), "…so we built it. Technically:", F(30, "s"), GREEN, fade_in(t, 0.5))
-    rows = [("both", "Both eyes truly looking at one point in 3D",
-             "Binocular vergence rig: Damped Track onto a 3D fixation target, 35 cm ± 5 cm"),
-            ("through", "Seen through a fixed, headset-style camera",
-             "Camera locked 40 cm ahead · full K, [R|t] and P saved per frame"),
-            ("labels", "Labels you can actually check",
-             "Chroma-key pupil calibration (0.37 px) + pixel-based verifier"),
-            ("so", "Open and simple to use",
-             "Blender + Python API: eyes.move(h, v) · eyes.reset() · eyes.render()")]
-    for k, (word, plain, tech) in enumerate(rows):
-        st = wt("solution", word, 0, 1.0 + 2 * k)
-        y = 170 + k * 185
-        a = fade_in(t, st - 0.35)
-        panel(img, (80, y, 860, y + 160), a)
-        para(img, (110, y + 30), plain, F(36, "s"), 720, FG, a)
-        arrow(img, 880, y + 80, 985, y + 80, fade_in(t, st, 0.6))
-        b = fade_in(t, st + 0.2)
-        panel(img, (1010, y, 1850, y + 160), b, fill=(20, 34, 27))
-        para(img, (1040, y + 30), tech, F(30, "s"), 780, GREEN if k == 3 else FG, b, lh=40)
-    return img
-
-
-ARCH = [("build", "Build", ["MakeHuman face", "skin, iris, strand hair", "one bone per eye"]),
-        ("find", "Calibrate eyes", ["sphere fit · r = 15.09 mm", "true centre + optical axis", "bone at eye centre"]),
-        ("rig", "Fixation rig", ["target 35 cm, ± 5 cm", "Damped Track vergence", "eyelid drivers"]),
-        ("locked", "Render", ["camera locked 40 cm", "Cycles · 1024 × 1024", "constant lighting"]),
-        ("ground", "Ground truth", ["metadata.json per frame", "pupil 2D / 3D, gaze", "K, [R|t], P"]),
-        ("verifier", "Verify", ["pupils found in pixels", "directions + clockwise", "report.json"])]
+ARCH = [("build", "Build a face", ["real skin, real eyes"]),
+        ("point", "Point the eyes", ["eyes.move(h, v)"]),
+        ("picture", "Take the picture", ["fixed camera"]),
+        ("save", "Save the answer", ["exact gaze + pupils"]),
+        ("double", "Double-check", ["found in the pixels"])]
 
 
 def seg_architecture(t, d):
     img = canvas()
-    tag(img, t, "ARCHITECTURE", 0.1)
-    bw, gap, x0, y0, bh = 270, 40, 60, 360, 300
-    times = [wt("architecture", k, 0, 0.8 + 2 * i) for i, (k, _, _) in enumerate(ARCH)]
+    tag(img, t, "ONE SCRIPT DOES IT ALL", 0.1)
+    bw, gap, x0, y0, bh = 320, 50, 60, 360, 260
+    times = [wt("architecture", k, 0, 0.8 + 1.1 * i) for i, (k, _, _) in enumerate(ARCH)]
     active = max([i for i, st in enumerate(times) if t >= st - 0.3] or [-1])
-    xa0, xa1 = x0 + 2 * (bw + gap), x0 + 5 * (bw + gap) - gap
+    xa0, xa1 = x0 + 1 * (bw + gap), x0 + 4 * (bw + gap) - gap
     aa = fade_in(t, 0.3)
     panel(img, (xa0, 150, xa1, 250), aa, fill=(30, 26, 16), outline=ACC)
     text(img, ((xa0 + xa1) // 2, 162), "wrapper/eyes.py", F(26, "b"), ACC, aa, anchor="ma")
     text(img, ((xa0 + xa1) // 2, 202), "eyes.move(h, v)  ·  eyes.reset()  ·  eyes.render()", F(26, "m"), FG, aa,
          anchor="ma")
-    for j in (2, 3, 4):
+    for j in (1, 2, 3):
         cx = x0 + j * (bw + gap) + bw // 2
         arrow(img, cx, 254, cx, y0 - 10, aa, ACC, 3)
     dd = ImageDraw.Draw(img)
@@ -513,12 +402,12 @@ def seg_architecture(t, d):
             c = ACC if on else LINE
             dd.ellipse((x + 20, y0 + 22, x + 64, y0 + 66), fill=(*c, int(255 * a)))
         text(img, (x + 42, y0 + 26), str(i + 1), F(26, "b"), BG if on else FG, a, anchor="ma")
-        text(img, (x + 20, y0 + 90), ttl, F(34, "b"), FG, a)
+        text(img, (x + 20, y0 + 90), ttl, F(38, "b"), FG, a)
         for j, ln in enumerate(lines):
-            text(img, (x + 20, y0 + 150 + j * 40), ln, F(23, "l"), MUTED, a)
+            text(img, (x + 20, y0 + 160 + j * 40), ln, F(27, "l"), MUTED, a)
         if i:
             arrow(img, x - gap + 4, y0 + bh // 2, x - 6, y0 + bh // 2, fade_in(t, times[i] - 0.3, 0.6), ACC, 4)
-    text(img, (W // 2, 740), "python tools/pipeline.py --all   →   build · calibrate · render · verify",
+    text(img, (W // 2, 740), "python tools/pipeline.py --all",
          F(28, "m"), MUTED, fade_in(t, times[-1] + 0.3), anchor="ma")
     return img
 
@@ -528,9 +417,9 @@ def seg_setup(t, d):
     n = len(os.listdir(os.path.join(BUILD, "setup")))
     paste(img, load_frame("setup", min(n, 1 + int(t / d * n))), (0, 0))
     tag(img, t, "THE SETUP")
-    caps = [(wt("setup", "fixation", 0, 2.0), "Fixation target · 35 cm ahead (moves ±5 cm)"),
-            (wt("setup", "render", 0, 6.0), "Render camera locked · 40 cm ahead"),
-            (wt("setup", "each", 0, 10.0), "Both lines of sight meet on the target")]
+    caps = [(wt("setup", "target", 0, 2.0), "Fixation target · 35 cm ahead (moves ±5 cm)"),
+            (wt("setup", "camera", 0, 4.5), "Render camera locked · 40 cm ahead"),
+            (wt("setup", "picture", 0, 4.0), "Both lines of sight meet on the target")]
     for k, (st, s) in enumerate(caps):
         end = caps[k + 1][0] if k + 1 < len(caps) else d + 1
         a = fade_in(t, st) * (1 - fade_in(t, end - 0.35, 0.35))
@@ -656,48 +545,6 @@ def stamp(img, x, y, s, a, col=GREEN):
     img.alpha_composite(ov, (int(x), int(y)))
 
 
-def seg_proof(t, d):
-    img = canvas()
-    half = wt("proof", "all", 1, d * 0.5) - 0.2   # switch on "...and all ten frames"
-    if t < half + 0.6:
-        a_out = 1 - fade_in(t, half, 0.6)
-        tag(img, t, "PROOF · 5-DIRECTION CHECK", 0.1)
-        text(img, (60, 80), "Pupils detected from the rendered pixels and compared with the centre frame",
-             F(26, "l"), MUTED, fade_in(t, 0.3) * a_out)
-        rows = {r["direction"].lower(): r for r in REPORT["directions"]["rows"]}
-        for k, n in enumerate(["center", "left", "right", "up", "down", "reset"]):
-            x, y = 60 + (k % 3) * 610, 150 + (k // 3) * 400
-            a = fade_in(t, 0.4 + 0.4 * k) * a_out
-            paste(img, load(os.path.join(ROOT, "checks", f"eyes_{n}.png")).resize((560, 280), Image.LANCZOS), (x, y), a)
-            text(img, (x, y + 290), n.upper(), F(34, "b"), FG, a)
-            rr = rows.get(n)
-            if rr:
-                dx = sum(e["dx"] for e in rr["eyes"]) / 2
-                dy = sum(e["dy"] for e in rr["eyes"]) / 2
-                text(img, (x + 170, y + 296), f"Δ = ({dx:+.1f}, {dy:+.1f}) px", F(26, "m"), MUTED, a)
-                stamp(img, x + 420, y + 288, "PASS", fade_in(t, 0.8 + 0.4 * k, 0.25) * a_out)
-            else:
-                text(img, (x + 170, y + 296), "reference", F(26, "m"), MUTED, a)
-    else:
-        tt = t - half
-        tag(img, tt, "PROOF · CLOCKWISE SEQUENCE", 0.1)
-        cx, cy, R = W // 2, H // 2 - 20, 370
-        dd = ImageDraw.Draw(img)
-        dd.ellipse((cx - R, cy - R, cx + R, cy + R), outline=(60, 64, 76), width=2)
-        for k in range(10):
-            th = 2 * math.pi * k / 10
-            x, y = cx + R * math.sin(th) - 120, cy - R * math.cos(th) - 60
-            a = fade_in(tt, 0.3 + 0.2 * k, 0.3)
-            paste(img, load(os.path.join(ROOT, "renders_eyes", f"frame_{k:02d}.png")).resize((240, 120), Image.LANCZOS), (x, y), a)
-            text(img, (x + 8, y + 4), f"k={k}", F(20, "b"), ACC, a)
-        ang = 2 * math.pi * min(1.0, max(0.0, (tt - 0.3) / 2.2))
-        dd.line((cx, cy, cx + (R - 90) * math.sin(ang), cy - (R - 90) * math.cos(ang)), fill=ACC, width=4)
-        text(img, (cx, cy - 70), "10 / 10", F(76, "b"), GREEN, fade_in(tt, 2.4), anchor="ma")
-        text(img, (cx, cy + 20), "frames in clockwise order", F(28, "s"), FG, fade_in(tt, 2.6), anchor="ma")
-        text(img, (cx, cy + 60), f"max angle error {SEQ_ERR:.1f}°", F(26, "l"), MUTED, fade_in(tt, 2.8), anchor="ma")
-    return img
-
-
 def counter(t, start, val, fmt, dur=1.2):
     return fmt % (val * ease((t - start) / dur))
 
@@ -728,104 +575,6 @@ def seg_accuracy(t, d):
     return img
 
 
-COMPARE_ROWS = [("Cost to add new images", "Weeks of recording", "Minutes", "Minutes · one command"),
-                ("Privacy", "Real volunteers' faces", "No real people", "No real people"),
-                ("Label accuracy", "≈ where people were asked to look", "Exact geometry",
-                 "Exact + pixel-verified (0.37 px)"),
-                ("Both eyes on one 3D point", "Yes, naturally", "Mostly one eye region", "Yes · 9.4° vergence at 35 cm"),
-                ("Built-in self-check", "—", "—", "Automatic pixel verifier")]
-
-
-def seg_compare(t, d):
-    img = canvas()
-    tag(img, t, "VS. THE STATE OF THE ART", 0.1)
-    xs, ws = [60, 500, 960, 1400], [430, 450, 430, 460]
-    y0, hh, rh = 100, 120, 118
-    heads = [("", ""), ("Real-world datasets", "MPIIGaze · GazeCapture · ETH-XGaze"),
-             ("Graphics renderers", "SynthesEyes · UnityEyes · NVGaze"), ("Ours", "calibrated Blender eye rig")]
-    times = [0.3, wt("compare", "real", 0, 2.0), wt("compare", "graphics", 0, 5.0), wt("compare", "ours", 0, 8.0)]
-    a_ours = fade_in(t, times[3] - 0.3)
-    panel(img, (xs[3] - 10, y0 - 10, xs[3] + ws[3], y0 + hh + rh * len(COMPARE_ROWS) + 6), a_ours,
-          fill=(18, 40, 28), outline=GREEN, r=18)
-    for c in range(4):
-        a = fade_in(t, times[c] - 0.3)
-        if c:
-            text(img, (xs[c] + 14, y0 + 16), heads[c][0], F(36, "b"), GREEN if c == 3 else FG, a)
-            text(img, (xs[c] + 14, y0 + 68), heads[c][1], F(21, "l"), MUTED, a)
-        for r, row in enumerate(COMPARE_ROWS):
-            y = y0 + hh + r * rh
-            if c == 0:
-                ImageDraw.Draw(img).line((60, y, 1860, y), fill=(40, 44, 54), width=1)
-                text(img, (xs[0] + 6, y + 36), row[0], F(30, "s"), FG, fade_in(t, 0.3 + 0.12 * r))
-                continue
-            ar = fade_in(t, times[c] - 0.1 + 0.15 * r)
-            col = GREEN if c == 3 else MUTED
-            fnt = F(27, "s" if c == 3 else "r")
-            lines = wrap(row[c], fnt, ws[c] - 30)
-            for j, ln in enumerate(lines[:2]):
-                text(img, (xs[c] + 14, y + (36 if len(lines) == 1 else 20) + j * 36), ln, fnt, col, ar)
-    return img
-
-
-NOVEL = [("pupils", "Cornea-calibrated pupil labels", "green-pupil pass → 3D entrance-pupil fit, 0.37 px"),
-         ("binocular", "True binocular vergence", "both eyes converge on one 3D point, ± 5 cm"),
-         ("eyelids", "Gaze-linked eyelids", "lids follow vertical gaze, like real eyes"),
-         ("pipeline", "Self-checking pipeline", "an independent pixel verifier proves every frame")]
-APPS = [("headsets", "headset", "XR foveated rendering"), ("driver", "car", "Driver monitoring"),
-        ("accessibility", "screen", "Eye-controlled accessibility"), ("medical", "medical", "Medical eye screening"),
-        ("digital", "avatar", "Digital humans & avatars"), (None, "target", "Eye-tracker testing & R&D")]
-
-
-def seg_novelty(t, d):
-    img = canvas()
-    tag(img, t, "NOVELTY & APPLICATIONS", 0.1)
-    text(img, (60, 100), "What's new", F(44, "b"), GREEN, fade_in(t, 0.2))
-    for k, (w_, ttl, sub) in enumerate(NOVEL):
-        a = fade_in(t, wt("novelty", w_, 0, 1 + 1.2 * k) - 0.3)
-        y = 190 + k * 150
-        panel(img, (60, y, 880, y + 130), a, r=12)
-        text(img, (110, y + 30), f"{k + 1}", F(52, "b"), GREEN, a, anchor="ma")
-        text(img, (160, y + 22), ttl, F(34, "b"), FG, a)
-        text(img, (160, y + 76), sub, F(24, "l"), MUTED, a)
-    t_b = wt("novelty", "beyond", 0, d / 2)
-    text(img, (960, 100), "Where it's useful", F(44, "b"), ACC, fade_in(t, t_b - 0.6))
-    last = t_b
-    for k, (w_, ic, lab) in enumerate(APPS):
-        st = wt("novelty", w_, 0, last + 0.6) if w_ else last + 0.6
-        last = st
-        a = fade_in(t, st - 0.3)
-        x, y = 960 + (k % 3) * 300, 190 + (k // 3) * 300
-        panel(img, (x, y, x + 280, y + 280), a, r=14)
-        icon(img, ic, x + 140, y + 105, 52, ACC, a, 4)
-        for j, ln in enumerate(wrap(lab, F(27, "s"), 240)):
-            text(img, (x + 140, y + 190 + j * 34), ln, F(27, "s"), FG, a, anchor="ma")
-    return img
-
-
-FUTURE = [("infrared", "Visible-light studio camera", "Infrared near-eye headset cameras"),
-          ("faces", "One adult face model", "Many faces, skin tones, ages and glasses"),
-          ("blinks", "Smooth, steady gaze", "Natural blinks and rapid eye jumps (saccades)"),
-          ("testing", "Synthetic images only", "Train on ours → test on real eyes (sim-to-real)")]
-
-
-def seg_future(t, d):
-    img = canvas()
-    tag(img, t, "SCOPE & FUTURE WORK", 0.1)
-    text(img, (100, 110), "Today", F(40, "b"), MUTED, fade_in(t, 0.2))
-    text(img, (920, 110), "Next", F(40, "b"), ACC, fade_in(t, 0.4))
-    for k, (w_, now, nxt) in enumerate(FUTURE):
-        st = wt("future", w_, 0, 1 + 1.6 * k)
-        y = 200 + k * 160
-        a = fade_in(t, st - 0.4)
-        panel(img, (80, y, 760, y + 130), a, r=12)
-        text(img, (110, y + 44), now, F(32, "r"), MUTED, a)
-        arrow(img, 780, y + 65, 875, y + 65, fade_in(t, st - 0.1, 0.6))
-        b = fade_in(t, st)
-        panel(img, (900, y, 1840, y + 130), b, fill=(34, 30, 20), r=12)
-        text(img, (930, y + 42), nxt, F(34, "s"), FG, b)
-    return img
-
-
 def seg_outro(t, d, team, repo, emails):
     img = canvas()
     cs = load(os.path.join(ROOT, "contact_sheet.png"))
@@ -851,6 +600,374 @@ def seg_outro(t, d, team, repo, emails):
     text(img, (W // 2, 685), team[1], F(30, "s"), MUTED, fade_in(t, t_th - 0.8), anchor="ma")
     text(img, (W // 2, 733), team[2], F(28, "l"), MUTED, fade_in(t, t_th - 0.6), anchor="ma")
     text(img, (W // 2, 805), "Thank you", F(40, "s"), FG, fade_in(t, t_th), anchor="ma")
+    return img
+
+
+# ------------------------------------------------------------------ visual-first scenes (v3)
+CYAN_HUD = (0, 229, 255)
+
+
+def frames_of(shot, t, d=None, speed=1.0):
+    n = len(os.listdir(os.path.join(BUILD, shot)))
+    if d is not None and speed == "fit":
+        i = min(n, 1 + int(t / d * n))
+    else:
+        i = min(n, 1 + int(t * FPS * speed))
+    return load_frame(shot, i)
+
+
+def callout(img, t, st, x, y, title, sub, col):
+    a = fade_in(t, st, 0.35)
+    if a <= 0:
+        return
+    dd = ImageDraw.Draw(img)
+    w = int(220 * ease(a * 1.4))
+    dd.line((x, y, x + w, y), fill=(*col, int(255 * a)), width=3)
+    dd.ellipse((x - 7, y - 7, x + 7, y + 7), outline=(*col, int(255 * a)), width=3)
+    text(img, (x + 20, y + 14), title, F(34, "b"), col, a)
+    text(img, (x + 20, y + 60), sub, F(24, "l"), FG, a)
+
+
+HUD_P = json.load(open(os.path.join(BUILD, "hud_pupils.json"))) if os.path.exists(os.path.join(BUILD, "hud_pupils.json")) else {}
+
+
+def brackets(img, cx, cy, size, a, col=CYAN_HUD, w=3):
+    if a <= 0:
+        return
+    ov = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    dd = ImageDraw.Draw(ov)
+    c = (*col, int(255 * a))
+    s, L = size, size * 0.45
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            x, y = cx + sx * s, cy + sy * s
+            dd.line((x, y, x - sx * L, y), fill=c, width=w)
+            dd.line((x, y, x, y - sy * L), fill=c, width=w)
+    dd.line((cx - 5, cy, cx + 5, cy), fill=c, width=2)
+    dd.line((cx, cy - 5, cx, cy + 5), fill=c, width=2)
+    img.alpha_composite(ov)
+
+
+def rolling(val, t, st, seed):
+    """Monospace number that scrambles for ~5 frames then settles on the true value."""
+    if t < st:
+        return ""
+    if t < st + 0.18:
+        r = (int(t * FPS) * 9301 + seed * 49297) % 233280 / 233280.0
+        return "%6.1f" % (val * (0.6 + 0.8 * r))
+    return "%6.1f" % val
+
+
+def lock_on(img, t, key, x, y, w, h, st, label=None):
+    """Close-up image at (x, y, w, h) with both pupils locked from st."""
+    im = load(os.path.join(ROOT, *key)) if isinstance(key, tuple) else key
+    a = fade_in(t, st - 0.5, 0.4)
+    paste(img, im.resize((w, h), Image.LANCZOS), (x, y), a)
+    name = os.path.splitext(key[-1])[0] if isinstance(key, tuple) else ""
+    pts = HUD_P.get(name, [])
+    sx, sy = w / 1024, h / 512
+    for j, (px, py) in enumerate(pts):
+        k = ease((t - st - 0.12 * j) / 0.28)
+        size = (1.0 + 0.7 * (1 - k)) * 34 * (w / 560)
+        col = GREEN if k >= 1 else CYAN_HUD
+        brackets(img, x + px * sx, y + py * sy, size, a * (0.3 + 0.7 * k) if t >= st else 0, col)
+        if w >= 400 and t >= st:
+            text(img, (int(x + px * sx) - 46, int(y + py * sy + size + 6)),
+                 rolling(px, t, st + 0.12 * j, j + 3) + "," + rolling(py, t, st + 0.12 * j, j + 7).strip(),
+                 F(17, "m"), col, a)
+    if label:
+        text(img, (x, y + h + 10), label, F(30, "b"), FG, a)
+        if t >= st + 0.45:
+            stamp(img, x + w - 150, y + h + 6, "LOCKED", fade_in(t, st + 0.45, 0.2))
+
+
+def seg_proof(t, d):
+    img = canvas()
+    half = wt("proof", "all", 1, d * 0.5) - 0.3
+    dd = ImageDraw.Draw(img)
+    for gx in range(0, W, 80):           # faint HUD grid
+        dd.line((gx, 0, gx, H), fill=(18, 26, 34))
+    for gy in range(0, H, 80):
+        dd.line((0, gy, W, gy), fill=(18, 26, 34))
+    if t < half + 0.5:
+        a_out = 1 - fade_in(t, half, 0.5)
+        tag(img, t, "INDEPENDENT CHECK · PUPILS FOUND IN THE PIXELS", 0.1)
+        t5 = wt("proof", "five", 0, 3.5) - 1.2
+        for k, n in enumerate(["center", "left", "right", "up", "down", "reset"]):
+            x, y = 60 + (k % 3) * 610, 110 + (k // 3) * 400
+            sub = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            lock_on(sub, t, ("checks", f"eyes_{n}.png"), x, y, 560, 280, 0.6 + max(0, t5 - 0.6) * k / 5 + 0.25 * k, n.upper())
+            if a_out < 1:
+                sub.putalpha(sub.getchannel("A").point(lambda v: int(v * a_out)))
+            img.alpha_composite(sub)
+    else:
+        tt = t - half
+        tag(img, tt, "CLOCKWISE SEQUENCE · 10 FRAMES", 0.1)
+        cx, cy, R = W // 2, H // 2 - 30, 360
+        dd.ellipse((cx - R, cy - R, cx + R, cy + R), outline=(0, 120, 140), width=2)
+        ang = 2 * math.pi * min(1.0, max(0.0, (tt - 0.3) / 2.4))
+        for k in range(10):
+            th = 2 * math.pi * k / 10
+            x, y = cx + R * math.sin(th) - 120, cy - R * math.cos(th) - 60
+            st = 0.3 + 2.4 * k / 10
+            lock_on(img, tt, ("renders_eyes", f"frame_{k:02d}.png"), x, y, 240, 120, st)
+            text(img, (x + 6, y + 2), f"k={k}", F(18, "b"), ACC, fade_in(tt, st - 0.3))
+        # radar sweep
+        ov = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        od = ImageDraw.Draw(ov)
+        a0 = math.degrees(ang) - 90
+        od.pieslice((cx - R + 90, cy - R + 90, cx + R - 90, cy + R - 90), a0 - 40, a0, fill=(*CYAN_HUD, 40))
+        od.line((cx, cy, cx + (R - 90) * math.sin(ang), cy - (R - 90) * math.cos(ang)), fill=(*CYAN_HUD, 255), width=3)
+        img.alpha_composite(ov)
+        text(img, (cx, cy - 70), "10 / 10", F(76, "b"), GREEN, fade_in(tt, 2.7), anchor="ma")
+        text(img, (cx, cy + 20), "in clockwise order", F(30, "s"), FG, fade_in(tt, 2.9), anchor="ma")
+        text(img, (cx, cy + 62), f"max angle error {SEQ_ERR:.1f}°", F(24, "l"), MUTED, fade_in(tt, 3.1), anchor="ma")
+    return img
+
+
+# ---------- leaner literature
+LIT = [("MPIIGaze", "CVPR 2015", "Zhang et al."), ("GazeCapture", "CVPR 2016", "Krafka et al."),
+       ("ETH-XGaze", "ECCV 2020", "Zhang et al.")]
+LIT_SYN = [("SynthesEyes", "ICCV 2015", "Wood et al."), ("UnityEyes", "ETRA 2016", "Wood et al."),
+           ("SimGAN", "CVPR 2017", "Shrivastava et al."), ("NVGaze", "CHI 2019", "Kim et al.")]
+
+
+def seg_literature(t, d):
+    img = canvas()
+    tag(img, t, "WHAT RESEARCHERS TRIED", 0.1)
+    cols = [(120, "people", "Film real volunteers", LIT, wt("literature", "filming", 0, 1.2), "+ real look", "– slow · private · labels ≈"),
+            (1010, "cube", "Draw eyes with graphics", LIT_SYN, wt("literature", "drawing", 0, 3.5), "+ fast · exact", "– mostly one eye")]
+    t_g = wt("literature", "gives", 0, d - 2)
+    for x, ic, head, papers, st, pro, con in cols:
+        a = fade_in(t, st - 0.3)
+        # icon multiplies (crowd / render farm) to read as "lots"
+        for k in range(5):
+            ak = fade_in(t, st - 0.2 + 0.08 * k)
+            icon(img, ic, x + 70 + k * 120, 200, 46, ACC if k == 0 else MUTED, ak, 4)
+        text(img, (x, 290), head, F(50, "b"), FG, a)
+        for k, (nm, venue, au) in enumerate(papers):
+            ak = fade_in(t, st + 0.15 * k)
+            y = 380 + k * 92
+            panel(img, (x, y, x + 760, y + 78), ak, r=12)
+            text(img, (x + 24, y + 14), nm, F(36, "b"), FG, ak)
+            text(img, (x + 330, y + 22), au, F(26, "l"), MUTED, ak)
+            text(img, (x + 736, y + 20), venue, F(28, "b"), ACC, ak, anchor="ra")
+        yb = 380 + len(papers) * 92 + 10
+        text(img, (x, yb), pro, F(32, "s"), GREEN, fade_in(t, t_g - 0.4))
+        text(img, (x + 330, yb), con, F(32, "s"), BAD, fade_in(t, t_g))
+    return img
+
+
+# ---------- scorecard comparison
+def mark(img, cx, cy, kind, a, s=30):
+    if a <= 0:
+        return
+    col = {"y": GREEN, "n": BAD, "p": ACC}[kind]
+    ov = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    dd = ImageDraw.Draw(ov)
+    k = 0.6 + 0.4 * ease(a * 1.3) + 0.15 * math.sin(min(1, a) * math.pi)
+    r = s * k
+    dd.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(*col, int(55 * a)), outline=(*col, int(255 * a)), width=4)
+    c = (*col, int(255 * a))
+    if kind == "y":
+        dd.line([(cx - r * 0.45, cy), (cx - r * 0.1, cy + r * 0.38), (cx + r * 0.5, cy - r * 0.38)], fill=c, width=6, joint="curve")
+    elif kind == "n":
+        dd.line((cx - r * 0.38, cy - r * 0.38, cx + r * 0.38, cy + r * 0.38), fill=c, width=6)
+        dd.line((cx - r * 0.38, cy + r * 0.38, cx + r * 0.38, cy - r * 0.38), fill=c, width=6)
+    else:
+        dd.line((cx - r * 0.45, cy, cx + r * 0.45, cy), fill=c, width=6)
+    img.alpha_composite(ov)
+
+
+# ------------------------------------------------------------------ v4: real people, application first
+def fact_chip(img, t, st, lines, src=None, x=60, y=78):
+    """Small sourced fact card, top-left (bottom is reserved for subtitles)."""
+    a = fade_in(t, st, 0.45)
+    if a <= 0:
+        return
+    f1, f2 = F(30, "s"), F(20, "l")
+    w = max(int(ImageDraw.Draw(img).textlength(s, font=f1)) for s in lines) + 60
+    h = 26 + 42 * len(lines) + (30 if src else 0)
+    ov = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    dd = ImageDraw.Draw(ov)
+    dd.rounded_rectangle((x, y, x + w, y + h), 16, fill=(8, 10, 14, int(190 * a)))
+    dd.rectangle((x, y + 14, x + 6, y + h - 14), fill=(*ACC, int(255 * a)))
+    img.alpha_composite(ov)
+    for i, s in enumerate(lines):
+        text(img, (x + 28, y + 16 + 42 * i), s, f1, FG, a)
+    if src:
+        text(img, (x + 28, y + h - 36), src, f2, MUTED, a)
+
+
+def footage(shot, t):
+    return frames_of(shot, t)
+
+
+def seg_open(t, d):
+    img = canvas()
+    paste(img, footage("app_open", t), (0, 0))
+    return img
+
+
+def seg_vr(t, d):
+    img = canvas()
+    paste(img, footage("app_vr", t), (0, 0))
+    st = wt("vr", "picture", 0, 3.3) - 0.2
+    a = fade_in(t, st, 0.5)
+    if a > 0:
+        # "what she sees": the foveated view (sharp circle that follows her gaze)
+        n0, n1 = 100, 176
+        k = n0 + int(((t - st) * FPS) % (n1 - n0))
+        pip = load_frame("cartoon_hook", k).resize((720, 405), Image.LANCZOS)
+        x, y = W - 780, 70 + int((1 - a) * 30)
+        sh = Image.new("RGBA", (740, 425), (0, 0, 0, 0))
+        ImageDraw.Draw(sh).rounded_rectangle((0, 0, 739, 424), 22, fill=(0, 0, 0, int(140 * a)))
+        img.alpha_composite(sh.filter(ImageFilter.GaussianBlur(10)), (x - 10, y - 2))
+        mask = Image.new("L", (720, 405), 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, 719, 404), 18, fill=int(255 * a))
+        pip.putalpha(mask)
+        img.alpha_composite(pip, (x, y))
+        ImageDraw.Draw(img).rounded_rectangle((x, y, x + 720, y + 405), 18, outline=(*ACC, int(255 * a)), width=3)
+        text(img, (x + 20, y + 418), "What she sees: sharp only where she looks", F(28, "s"), FG, a)
+    fact_chip(img, t, 0.8, ["Eye-tracked headsets: PlayStation VR2, Apple Vision Pro"], None)
+    return img
+
+
+def seg_car(t, d):
+    img = canvas()
+    paste(img, footage("app_car", t), (0, 0))
+    fact_chip(img, t, wt("car", "since", 0, 2.5) - 0.2,
+              ["EU law: since July 2026, every new car", "must warn a distracted driver"], "EU General Safety Regulation (ADDW)")
+    t_w = 150 / FPS
+    if t >= t_w and int((t - t_w) * 3.75) % 2 == 0:
+        stamp(img, W - 420, 90, "EYES OFF ROAD", 1.0, col=(255, 70, 60))
+    return img
+
+
+def seg_access(t, d):
+    img = canvas()
+    paste(img, footage("app_access", t), (0, 0))
+    fact_chip(img, t, wt("access", "like", 0, 2.6) - 0.2, ["Eye-gaze communication devices", "help people living with ALS type and speak"],
+              "e.g. Tobii Dynavox TD I-Series")
+    return img
+
+
+def seg_medical(t, d):
+    img = canvas()
+    paste(img, footage("app_medical", t), (0, 0))
+    fact_chip(img, t, wt("medical", "autism", 0, 4.5) - 1.2, ["FDA-cleared eye-tracking aid helps diagnose", "autism in children aged 16 to 30 months"],
+              "EarliPoint Evaluation, FDA 510(k), 2022")
+    return img
+
+
+def seg_lineup(t, d):
+    img = canvas()
+    paste(img, footage("app_lineup", t), (0, 0))
+    tag(img, t, "OUR SOLUTION · DIGITAL HUMANS", 0.3)
+    return img
+
+
+def eyewall_tiles():
+    tiles = []
+    for who in ("maya", "arjun", "arthur", "zuri"):
+        for k in range(1, 7):
+            p = os.path.join(BUILD, "eyewall", who, f"{k:04d}.png")
+            if os.path.exists(p):
+                tiles.append(load(p))
+    return tiles
+
+
+def seg_problem(t, d):
+    """A wall of real eye photos multiplies (each with a green label), then the problems pop up."""
+    img = canvas()
+    tiles = eyewall_tiles()
+    tag(img, t, "THE CATCH", 0.1)
+    if not tiles:
+        return img
+    z = 1.0 - 0.62 * ease((t - 0.3) / max(1.0, wt("problem", "each", 0, 5.0)))
+    tw, th = int(420 * z), int(210 * z)
+    cols, rows = W // tw + 3, H // th + 3
+    t_lab = wt("problem", "labelled", 0, 5.5)
+    t_bad = wt("problem", "never", 0, d - 1.5)
+    ox, oy = (W - cols * tw) // 2, (H - rows * th) // 2 - 40
+    for r in range(rows):
+        for c in range(cols):
+            idx = (r * 7 + c * 3) % len(tiles)
+            a = fade_in(t, 0.05 * ((r * cols + c) % 17), 0.3)
+            x, y = ox + c * tw, oy + r * th
+            if x > W or y > H or x + tw < 0 or y + th < 0:
+                continue
+            paste(img, tiles[idx].resize((tw - 6, th - 6), Image.BILINEAR), (x + 3, y + 3), a * 0.92)
+            la = fade_in(t, t_lab + 0.01 * ((r * cols + c) % 23), 0.25)
+            if la > 0:
+                bad = t >= t_bad and (r + c) % 3 == 0
+                col = (255, 80, 70) if bad else GREEN
+                cy = y + th * 0.47
+                brackets(img, x + tw * 0.25, cy, max(8, tw * 0.05), la, col, 2)
+                brackets(img, x + tw * 0.75, cy, max(8, tw * 0.05), la, col, 2)
+                if bad:
+                    text(img, (int(x + tw * 0.5), int(y + th * 0.18)), "?", F(max(18, int(th * 0.35)), "b"), (255, 80, 70), la, anchor="ma")
+    t_c = wt("problem", "collecting", 0, 7.5)
+    shade = fade_in(t, t_c - 0.3, 0.6)
+    if shade > 0:
+        img.alpha_composite(Image.new("RGBA", (W, H), (8, 10, 14, int(150 * shade))))
+    x = 160
+    for word, lab in (("slow", "Slow"), ("expensive", "Expensive"), ("private", "Private"), ("never", "Labels never perfect")):
+        st = wt("problem", word, 0, 9.0)
+        x += chip(img, x, 440, lab, fade_in(t, st - 0.1, 0.3), BAD, 46) + 30
+    return img
+
+
+def seg_xray(t, d):
+    img = canvas()
+    paste(img, frames_of("xray", t, d, "fit"), (0, 0))
+    tag(img, t, "HOW IT WORKS", 0.2)
+    callout(img, t, wt("eyeball", "centre", 0, 1.8) - 0.2, 110, 170, "TRUE CENTRE", "each eye turns about it", CYAN_HUD)
+    callout(img, t, wt("eyeball", "sight", 0, 3.5) - 0.2, 110, 320, "LINE OF SIGHT", "where the eye really looks", ACC)
+    return img
+
+
+SCORE = [("Faster", "nyy"), ("Protects privacy", "nyy"), ("Both eyes together", "ypy"), ("Checks itself", "nny")]
+
+
+def seg_compare(t, d):
+    img = canvas()
+    tag(img, t, "COMPARED WITH TODAY'S METHODS", 0.1)
+    cols = [("Real photos", "MPIIGaze · ETH-XGaze"), ("Graphics tools", "SynthesEyes · UnityEyes"), ("Ours", "digital humans")]
+    xs = [880, 1230, 1590]
+    y0 = 300
+    a3 = fade_in(t, 0.5)
+    panel(img, (xs[2] - 170, 140, xs[2] + 170, y0 + 4 * 140 - 20), a3, fill=(18, 40, 28), outline=GREEN, r=18)
+    words = ["faster", "privacy", "both", "checks"]
+    for c, (nm, sub) in enumerate(cols):
+        a = fade_in(t, 0.2 + 0.15 * c)
+        text(img, (xs[c], 170), nm, F(38, "b"), GREEN if c == 2 else FG, a, anchor="ma")
+        text(img, (xs[c], 222), sub, F(22, "l"), MUTED, a, anchor="ma")
+    for r, (crit, vals) in enumerate(SCORE):
+        st = wt("compare", words[r], 0, 1.5 + 1.4 * r) - 0.2
+        y = y0 + r * 140
+        text(img, (110, y + 40), crit, F(50, "b"), FG, fade_in(t, st - 0.2))
+        ImageDraw.Draw(img).line((110, y + 125, 1780, y + 125), fill=(34, 38, 48), width=2)
+        for c in range(3):
+            mark(img, xs[c], y + 62, vals[c], fade_in(t, st + 0.12 * c, 0.3), 40)
+    return img
+
+
+FUT = [("faces", "people", "More faces & skin tones"), ("infrared", "headset", "Infrared headset cameras"),
+       ("blinks", "eye", "Natural blinks"), ("medical", "target", "Ready for headsets, cars & clinics")]
+
+
+def seg_future(t, d):
+    img = canvas()
+    tag(img, t, "WHAT'S NEXT", 0.1)
+    for k, (w_, ic, lab) in enumerate(FUT):
+        st = wt("future", w_, 0, 1 + k)
+        a = fade_in(t, st - 0.3, 0.4)
+        cx = 240 + k * 480
+        panel(img, (cx - 200, 260, cx + 200, 680), a, r=20)
+        icon(img, ic, cx, 420, 80, ACC, a, 6)
+        for j, ln in enumerate(wrap(lab, F(34, "b"), 340)):
+            text(img, (cx, 550 + j * 44), ln, F(34, "b"), FG, a, anchor="ma")
     return img
 
 
@@ -899,7 +1016,10 @@ def mix(path, music, cues, sr=48000):
             m = max(0, min(len(v), len(voice) - a))
             voice[a:a + m] += v[:m]
     k = int(0.3 * sr)
-    env = np.convolve(np.abs(voice), np.ones(k) / k, mode="same")
+    # centred moving average of |voice| (same as np.convolve(..., mode="same") but O(n) via a running sum)
+    c = np.concatenate([[0.0], np.cumsum(np.abs(voice))])
+    i = np.arange(len(voice))
+    env = (c[np.clip(i - k // 2 + k, 0, len(voice))] - c[np.clip(i - k // 2, 0, len(voice))]) / k
     out = music * 0.55 * (1.0 - 0.6 * np.clip(env / 0.03, 0, 1)) + voice
     pcm = (np.clip(out, -0.98, 0.98) * 32767).astype(np.int16)
     with wave.open(path, "wb") as w:
@@ -923,7 +1043,7 @@ def write_srt(path, cues):
 
 
 # ------------------------------------------------------------------ main
-def main():
+def parse_args(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--team", default="Team Rocklef")
     ap.add_argument("--members", default="Sree Rohith Balaji  ·  Thackshanaramana")
@@ -931,22 +1051,29 @@ def main():
     ap.add_argument("--repo", default="github.com/rocklef/xr-hackathon-track1-gaze")
     ap.add_argument("--emails", default="sb2213@srmist.edu.in,tb2138@srmist.edu.in")
     ap.add_argument("--preview", type=int, default=0, help="render every Nth frame only")
-    a = ap.parse_args()
+    ap.add_argument("--workers", type=int, default=max(1, min(12, (os.cpu_count() or 4) - 4)),
+                    help="parallel frame painters (each paints whole frames on its own CPU core)")
+    return ap.parse_args(argv)
+
+
+def build(a):
+    """Segment list (painter, duration), start times, scene keys and total length."""
     team = (a.team, a.members, a.college)
-    n_setup = len(os.listdir(os.path.join(BUILD, "setup")))
-    base = [("title", lambda t, d: seg_title(t, d, team), 6.0),
-            ("background", seg_background, 4.0),
+    base = [("open", seg_open, 4.0),
+            ("vr", seg_vr, 4.0),
+            ("car", seg_car, 4.0),
+            ("access", seg_access, 4.0),
+            ("medical", seg_medical, 4.0),
+            ("title", lambda t, d: seg_title(t, d, team), 4.5),
             ("problem", seg_problem, 4.0),
             ("literature", seg_literature, 4.0),
-            ("solution", seg_solution, LEAD + vdur("solution") + 2.2),
+            ("solution", seg_lineup, 4.0),
+            ("eyeball", seg_xray, 4.0),
+            ("setup", seg_setup, 7.0),
+            ("gaze", seg_gaze, 8.0),
             ("architecture", seg_architecture, 4.0),
-            ("setup", seg_setup, n_setup / FPS),
-            ("gaze", seg_gaze, len(TRACK) / FPS + 0.6),
-            ("wrapper", seg_wrapper, 4.0),
             ("proof", seg_proof, 10.0),
-            ("accuracy", seg_accuracy, 4.0),
             ("compare", seg_compare, 4.0),
-            ("novelty", seg_novelty, 4.0),
             ("future", seg_future, 4.0),
             ("outro", lambda t, d: seg_outro(t, d, team, a.repo, a.emails.split(",")), 7.0)]
 
@@ -963,7 +1090,44 @@ def main():
     for _, dur in segs:
         starts.append(s)
         s += dur - XF
-    total = s + XF
+    return segs, starts, keys, s + XF
+
+
+_W = {}
+
+
+def _init_worker(argv):
+    _W["segs"], _W["starts"], _, _ = build(parse_args(argv))
+
+
+def paint(fi, segs=None, starts=None):
+    """Paint global frame fi and return its raw RGB bytes."""
+    segs, starts = segs or _W["segs"], starts or _W["starts"]
+    gt = fi / FPS
+    frame = None
+    for (fn, dur), st in zip(segs, starts):
+        if st <= gt < st + dur:
+            im = fn(gt - st, dur)
+            frame = im if frame is None else Image.blend(frame, im, ease((gt - st) / XF))
+    return (frame or canvas()).convert("RGB").tobytes()
+
+
+def video_codec():
+    """H.264 on the NVIDIA card (NVENC) when the driver supports it, else fast multi-threaded x264."""
+    nv = ["-c:v", "h264_nvenc", "-preset", "p6", "-tune", "hq", "-rc", "vbr", "-cq", "19", "-b:v", "0", "-profile:v", "high"]
+    probe = subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "color=black:s=256x256:d=0.1",
+                            *nv, "-f", "null", "-"], capture_output=True)
+    if probe.returncode == 0:
+        print("encoder: h264_nvenc (GPU)", flush=True)
+        return nv
+    print("encoder: libx264 (GPU encoder needs a newer NVIDIA driver)", flush=True)
+    return ["-c:v", "libx264", "-preset", "fast", "-crf", "18"]
+
+
+def main():
+    import multiprocessing as mp
+    a = parse_args()
+    segs, starts, keys, total = build(a)
     os.makedirs(OUT, exist_ok=True)
     pi = keys.index("proof")
     events = [starts[pi] + 0.8 + 0.4 * k for k in range(1, 6)]
@@ -972,21 +1136,25 @@ def main():
     write_srt(os.path.join(OUT, "demo.srt"), [(starts[i], k) for i, k in enumerate(keys)])
     out = os.path.join(OUT, "demo_preview.mp4" if a.preview else "demo.mp4")
     step = max(1, a.preview)
+    # H.264 on the NVIDIA card (NVENC); the frames themselves are painted on a pool of CPU cores
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}",
-           "-r", str(FPS / step), "-i", "-", "-i", wav, "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+           "-r", str(FPS / step), "-i", "-", "-i", wav, *video_codec(),
            "-pix_fmt", "yuv420p", "-r", str(FPS), "-c:a", "aac", "-b:a", "192k", "-shortest",
            "-movflags", "+faststart", out]
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-    for fi in range(0, int(total * FPS), step):
-        gt = fi / FPS
-        frame = None
-        for (fn, dur), st in zip(segs, starts):
-            if st <= gt < st + dur:
-                im = fn(gt - st, dur)
-                frame = im if frame is None else Image.blend(frame, im, ease((gt - st) / XF))
-        p.stdin.write((frame or canvas()).convert("RGB").tobytes())
-        if fi % 300 == 0:
-            print(f"  {gt:6.1f}s / {total:.1f}s", flush=True)
+    idx = range(0, int(total * FPS), step)
+    print(f"painting {len(idx)} frames on {a.workers} cores", flush=True)
+    if a.workers > 1:
+        with mp.Pool(a.workers, initializer=_init_worker, initargs=(sys.argv[1:],)) as pool:
+            for n, buf in enumerate(pool.imap(paint, idx, chunksize=4)):
+                p.stdin.write(buf)
+                if n % 300 == 0:
+                    print(f"  {idx[n] / FPS:6.1f}s / {total:.1f}s", flush=True)
+    else:
+        for n, fi in enumerate(idx):
+            p.stdin.write(paint(fi, segs, starts))
+            if n % 300 == 0:
+                print(f"  {fi / FPS:6.1f}s / {total:.1f}s", flush=True)
     p.stdin.close()
     p.wait()
     print("wrote", out, f"({total:.1f} s)")

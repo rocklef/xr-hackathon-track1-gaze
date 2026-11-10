@@ -16,37 +16,35 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 OUT = os.path.join(ROOT, "video", "build", "voice")
 
 SCRIPT = {
-    "title": "Hi, we're Team Rocklef, and this is our Track One project.",
-    "background": "Imagine a headset that sharpens only what you look at, a car that notices a driver's drifting eyes, "
-                  "or a screen you control with just your eyes. Each one needs to know exactly where you're looking.",
-    "problem": "But these systems learn from examples, and gathering real ones is slow, costly and private, and never "
-               "perfectly labelled. So they fail where they've seen the least.",
-    "literature": "Researchers have tried two routes: recording thousands of real volunteers, and drawing eyes with "
-                  "computer graphics. Both work, but each trades off label accuracy, realism, or control.",
-    "solution": "The gap: no open tool where both eyes truly fixate a 3D point, through a fixed headset-style camera, "
-                "with labels you can verify. So we built one.",
-    "architecture": "We build a textured face, find each eyeball's true centre and axis, and rig both eyes onto a moving "
-                    "target, with eyelids that follow. A locked camera renders each frame with full ground truth, "
-                    "and a verifier checks it.",
-    "setup": "The fixation target sits thirty-five centimetres ahead and moves up to five centimetres either way. The "
-             "camera is locked forty centimetres ahead, and both lines of sight meet on the target.",
-    "gaze": "In Python, eyes dot move, with h and v, turns both eyes together, and eyes dot reset re-centres them. "
-            "Notice the eyelids following the gaze.",
-    "wrapper": "One command renders the ten clockwise frames from the top, with metadata for each: the inputs, eye "
-               "rotations, two D pupil centres and the full camera matrix.",
-    "proof": "An independent checker then finds the pupils in the pixels themselves. All five directions pass, and all "
-             "ten frames follow the clockwise order.",
-    "accuracy": "During calibration, we paint the pupil green and fit its true position behind the cornea, so our labels "
-                "are accurate to under half a pixel.",
-    "compare": "Against the state of the art: real datasets are costly, private and approximate. Graphics renderers are "
-               "fast, but mostly model one eye. Ours is free, private, binocular, and proves every label from the pixels.",
-    "novelty": "What's new: pupils calibrated through the cornea, true binocular vergence, gaze-linked eyelids, and a "
-               "self-checking pipeline. And it reaches far beyond headsets: driver monitoring, eye-controlled "
-               "accessibility, medical eye screening, and digital humans.",
-    "future": "Next: infrared headset cameras, more faces, skin tones and glasses, natural blinks, and testing how well "
-              "models trained on our images work on real eyes.",
-    "outro": "Calibrated, verifiable eye data from one script. For the code or further development, email us at the "
-             "addresses on screen. Thank you, from Team Rocklef.",
+    "open": "Every second, your eyes show what you are paying attention to. And more and more machines are learning "
+            "to read them.",
+    "vr": "In a virtual reality headset, eye tracking means the picture only has to be perfectly sharp where you are "
+          "looking. So it runs smoother, and the battery lasts longer.",
+    "car": "In cars, it saves lives. Since July, every new car sold in Europe must warn a driver whose eyes leave "
+           "the road.",
+    "access": "For people who can't move or speak, like many living with ALS, the eyes become a keyboard. They can "
+              "type, and even talk, just by looking.",
+    "medical": "And for doctors, the way a young child's eyes follow a picture can help spot conditions like autism "
+               "much earlier.",
+    "title": "We're Team Rocklef, from SRM Institute of Science and Technology.",
+    "problem": "But every one of these systems has to learn first, from huge numbers of eye photos, each labelled "
+               "with exactly where the person was looking. Collecting them from real people is slow, expensive and "
+               "private. And the labels are never perfect.",
+    "literature": "Researchers have tried filming volunteers, and drawing eyes with computer graphics. But each "
+                  "approach gives something up.",
+    "solution": "So we built digital humans, with eyes we can point anywhere, and we always know the exact answer.",
+    "eyeball": "Each eye turns around its true centre, and looks along its real line of sight, just like yours.",
+    "setup": "A target in front of the face tells both eyes where to look, and a fixed camera takes the picture.",
+    "gaze": "Left, right, up, down. Even the eyelids follow.",
+    "architecture": "One script does it all: build the face, point the eyes, take the picture, save the answer, and "
+                    "double check it.",
+    "proof": "The computer then checks its own work, finding the pupils in every picture. All five directions pass. "
+             "All ten frames, in the right order, accurate to under half a pixel.",
+    "compare": "Compared with collecting real photos, it is faster, it protects privacy, it handles both eyes "
+               "together, and it checks itself.",
+    "future": "Next, we'll add more faces, infrared headset cameras and natural blinks, so the next headset, car or "
+              "medical device can learn faster, and more safely.",
+    "outro": "Want the code, or to build on it? Email us. Thank you, from Team Rocklef.",
 }
 
 

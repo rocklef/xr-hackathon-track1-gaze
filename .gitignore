@@ -7,3 +7,6 @@ dist/
 __pycache__/
 video/build/
 video/out/
+video/cartoon/node_modules/
+video/cartoon/tex/
+video/cartoon/out/

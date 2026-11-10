@@ -277,4 +277,5 @@ def main():
     print("CAL", dict(scene["gaze_cfg"]))
 
 
-main()
+if __name__ == "__main__":
+    main()

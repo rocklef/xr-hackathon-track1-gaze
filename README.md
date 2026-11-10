@@ -140,3 +140,4 @@ Results go to `checks/report.json`.
 * MakeHuman base mesh, skin, eyes, eyebrows, eyelashes and hair: **CC0** (MakeHuman system assets).
 * MPFB (GPL-3.0) is used only as a generator at build time. It is not needed to open or render `scene.blend`.
 * All code in `wrapper/` and `tools/` was written for this submission.
+* Demo video (`video/`): the cast are MPFB people built with MakeHuman CC0 clothes, hair and skins and rigged with the same eye rig. The household props are from **Google Scanned Objects** (CC BY 4.0, Google Research), loaded as GLB files from the Hugging Face mirror `codepawl/scanned-objects-glb`. The small three.js shot engine in `video/cartoon/` is adapted from `artemnovitckii/claude-animation-skills` (MIT, see `video/cartoon/LICENSE-animation-skills`). The narration voice is Microsoft Edge TTS (en-US-AndrewNeural).
