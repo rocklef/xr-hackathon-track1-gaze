@@ -5,9 +5,9 @@ topology the evaluation uses ("textures will be directly wrapped around GNM Head
 
 | Rubric item | Points | Deliverable | Where |
 |---|---|---|---|
-| Texture photorealism | 60 | 8 texture sets on GNM's UV layout (skin, both eyes, teeth, tongue), a render script, and renders | `../textures/`, `render_textures.py`, `../renders_textures/` |
-| Kinematic accuracy | 20 | One script with three inputs (`left`, `right`, `motion`) that renders frames and a video for each, each ≤ 15 s | `eyes_cli.py`, `../renders_eyes_cli/` |
-| Code & UV portability | 20 | A `.blend` that loads the GNM head and plays an expression on the Timeline (eyelids, iris/pupil, eyebrows, gaze) | `out/gnm_expression_timeline.blend` |
+| Texture photorealism | 60 | 8 texture sets on GNM's UV layout (skin, both eyes, teeth, tongue), a render script, and renders | `../textures/`, `../render_textures.py` (wraps `render_textures.py` here), `../renders_textures/` |
+| Kinematic accuracy | 20 | One script with three inputs (`left`, `right`, `motion`) that renders frames and a video for each, each ≤ 15 s | `../eyes_cli.py` (wraps `eyes_cli.py` here), `../renders_eyes_cli/` |
+| Code & UV portability | 20 | A `.blend` that loads the GNM head and plays an expression on the Timeline (eyelids, iris/pupil, eyebrows, gaze) | `../gnm_expression_timeline.blend` (repo root) |
 
 ## Quick start
 

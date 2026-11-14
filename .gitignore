@@ -1,16 +1,17 @@
 _downloads/
-_test/
-_calib/
-_probe.blend
-*.blend1
-dist/
 __pycache__/
-video/build/
-video/out/
-video/cartoon/node_modules/
-video/cartoon/tex/
-video/cartoon/out/
-
-# GNM pipeline: keep videos/stills, not raw frames or Blender backups
-renders_eyes_cli/*/frames/
 *.blend1
+
+# GNM pipeline: keep videos/stills, not raw frames
+renders_eyes_cli/*/frames/
+
+# legacy MakeHuman pipeline: local working data
+legacy/_test/
+legacy/_calib/
+legacy/_probe.blend
+legacy/dist/
+legacy/video/build/
+legacy/video/out/
+legacy/video/cartoon/node_modules/
+legacy/video/cartoon/tex/
+legacy/video/cartoon/out/
