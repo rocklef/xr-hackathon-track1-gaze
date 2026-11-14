@@ -1,5 +1,22 @@
 # Track 01 — Synthetic Eye Movement & Virtual Camera Rendering
 
+## ▶ Evaluation deliverables (GNM head) — start here
+
+The final submission is built on **Google's GNM v3 head model**, matching the evaluation rubric. Everything is in
+[`gnm_rig/`](gnm_rig/README.md):
+
+| Rubric item | Points | Deliverable |
+|---|---|---|
+| Texture photorealism | 60 | 8 texture sets on GNM's UV layout (UDIM): 4K skin albedo, normal and roughness plus a **separate 4K iris map for each eye** in [`textures/`](textures/). The render script is `gnm_rig/render_textures.py`, with 24 renders and gallery sheets in [`renders_textures/`](renders_textures/). |
+| Kinematic accuracy | 20 | `python gnm_rig/eyes_cli.py --input left\|right\|motion` renders frames and makes a video. The three videos, each 15 s or less, are in [`renders_eyes_cli/`](renders_eyes_cli/). |
+| Code & UV portability | 20 | [`gnm_rig/out/gnm_expression_timeline.blend`](gnm_rig/out/) loads the GNM head and plays an expression on the Timeline (eyelids, iris/pupil, eyebrows, gaze). |
+
+GNM model: [huggingface.co/google/gnm-v3](https://huggingface.co/google/gnm-v3) (Apache-2.0). Download
+`gnm_head.npz` to `_downloads/gnm/model/` to rebuild from scratch. The sections below describe our earlier
+MakeHuman/MPFB pipeline (calibrated gaze rig and pupil ground truth), which we keep for reference.
+
+---
+
 A textured, rigged human face in Blender whose eyes rotate about their own physical centres, converge on a fixation target 35 cm in front of the eyes, and are rendered by a camera locked 40 cm in front. A small Python wrapper drives the gaze (`eyes.move(h, v)` / `eyes.reset()` / `eyes.render()`) and writes per-frame ground truth: 2D and 3D pupil centres, eye rotations, gaze vectors, and camera intrinsics/extrinsics.
 
 ![contact sheet](contact_sheet.png)

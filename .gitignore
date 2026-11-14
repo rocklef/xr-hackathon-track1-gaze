@@ -10,3 +10,7 @@ video/out/
 video/cartoon/node_modules/
 video/cartoon/tex/
 video/cartoon/out/
+
+# GNM pipeline: keep videos/stills, not raw frames or Blender backups
+renders_eyes_cli/*/frames/
+*.blend1
